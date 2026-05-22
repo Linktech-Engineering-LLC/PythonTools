@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-14
- Modified: 2026-04-28
+ Modified: 2026-05-22
  File: PythonTools/logging/helpers.py
  Version: 1.0.1
  Description: Logging initialization helpers for RunUpdates
@@ -16,28 +16,60 @@ import os
 from pathlib import Path
 
 from .factory import LoggerFactory
+class ConfigError(Exception):
+    pass
 
+def build_log_cfg(paths: dict, run_cfg: dict) -> dict:
+    project_name = paths["PROJECT_NAME"]
 
-def resolve_paths() -> dict:
+    # Base log dir: from CLI or default
+    log_dir = run_cfg.get("log_dir", paths["LOG_DIR"])
+
+    log_file = Path(log_dir) / f"{project_name}.log"
+
+    # Derive logging-specific settings from run_cfg
+    max_mb = run_cfg.get("log_max_mb", 50)
+    max_bytes = max_mb * 1_000_000
+
+    return {
+        # Logging-only flags (not CLI flags)
+        "enabled": True,
+        "rotate_logs": True,
+
+        # Derived from CLI
+        "path": log_file,
+        "max_bytes": max_bytes,
+        "max_age_days": run_cfg.get("log_max_age_days", 30),
+        "console_enabled": not run_cfg.get("no_console", False),
+        "compress_archive": run_cfg.get("compress_archive", False),
+        "delete_log": run_cfg.get("delete_log", False),
+
+        # Custom levels
+        "custom_levels": {
+            "AUDIT": 25,
+            "LIFECYCLE": 26,
+            "TRACE": 5,
+        },
+
+        # Verbosity
+        "log_level": "DEBUG" if run_cfg.get("verbose") else "INFO",
+    }
+
+def resolve_paths(anchor_file: str | Path) -> dict:
     """
-    Resolve deterministic project-local paths for RunUpdates.
-    - Detect install root based on the package folder
-    - Detect project name from package folder
-    - Build LOG_DIR and CONFIG_DIR under install root
+    Resolve deterministic project-local paths for ANY project.
+    Caller provides __file__ from its own package.
     """
-
-    this_file = Path(__file__).resolve()
-    package_dir = this_file.parents[1]      # .../RunUpdates/RunUpdates
-    install_root = package_dir              # <-- use package_dir as root
-
-    project_name = package_dir.name         # "RunUpdates"
+    anchor = Path(anchor_file).resolve()
+    package_dir = anchor.parents[1]      # caller's package root
+    install_root = package_dir
+    project_name = package_dir.name
 
     log_dir = install_root / "var" / "log"
     config_dir = install_root / "etc"
-
-    log_dir.mkdir(parents=True, exist_ok=True)
-    config_dir.mkdir(parents=True, exist_ok=True)
-
+    if not config_dir.exists():
+        raise ConfigError(f"Config directory does not exist: {config_dir}")
+    
     return {
         "ROOT": str(install_root),
         "LOG_DIR": str(log_dir),
@@ -46,72 +78,15 @@ def resolve_paths() -> dict:
     }
 
 
-def init_logger(run_cfg: dict):
+def init_logger(log_cfg: dict, project_name: str):
     """
-    Initialize logging for RunUpdates.
-    - Resolve install root and log directory
-    - Apply CLI overrides
-    - Build deterministic log file path
-    - Perform size-based rotation
-    - Instantiate LoggerFactory
-
-    Returns:
-        paths: dict of resolved paths
-        log_cfg: final logging configuration dict
-        logger_factory: initialized LoggerFactory
+    Initialize logging using caller-provided configuration.
+    PythonTools should NOT determine paths or project names.
     """
-
-    # ------------------------------------------------------------
-    # 1. Resolve base paths (install root, LOG_DIR, CONFIG_DIR)
-    # ------------------------------------------------------------
-    paths = resolve_paths()
-    project_name = paths["PROJECT_NAME"]
-
-    # Default log directory: <install_root>/var/log
-    default_log_dir = paths["LOG_DIR"]
-
-    # CLI override: --log-dir
-    cli_log_dir = run_cfg.get("log_dir")
-    if cli_log_dir:
-        log_dir = os.path.expanduser(cli_log_dir)
-    else:
-        log_dir = default_log_dir
-
-    # Ensure directory exists
-    Path(log_dir).mkdir(parents=True, exist_ok=True)
-
-    # ------------------------------------------------------------
-    # 2. Build deterministic log file path
-    # ------------------------------------------------------------
-    log_file = os.path.join(log_dir, f"{project_name}.log")
-
-    # ------------------------------------------------------------
-    # 3. Build log_cfg (RunUpdates has no YAML logging config)
-    # ------------------------------------------------------------
-    log_cfg = {
-        "enabled": True,
-        "path": log_file,
-        "rotate_logs": True,
-        "max_bytes": 50_000_000,   # 50 MB default
-        "max_age_days": 30,
-        "console_enabled": not run_cfg.get("no_console", False),
-        "custom_levels": {
-            "AUDIT": 25,
-            "LIFECYCLE": 26,
-            "TRACE": 5,
-        },
-        "log_level": "DEBUG" if run_cfg.get("verbose") else "INFO",
-    }
-
-    # ------------------------------------------------------------
-    # 4. Instantiate LoggerFactory
-    # ------------------------------------------------------------
-    logger_factory = LoggerFactory(
+    return LoggerFactory(
         log_cfg=log_cfg,
         project_name=project_name
     )
-
-    return paths, log_cfg, logger_factory
 
 
 def register_custom_levels(log_cfg: dict):
@@ -150,3 +125,32 @@ def register_custom_levels(log_cfg: dict):
         # Attach logger.audit(), logger.lifecycle(), etc.
         method = make_log_method(value, upper)
         setattr(logging.Logger, upper.lower(), method)
+
+def initialize_universal_logging(paths: dict, run_cfg: dict | None = None) -> dict:
+    """
+    Universal logging initializer using PythonTools helpers.
+    Project-agnostic. No RunUpdates dependencies.
+    """
+    run_cfg = run_cfg or {}
+
+    # Build logging configuration
+    log_cfg = build_log_cfg(paths, run_cfg)
+
+    # Create logger factory
+    logger_factory = init_logger(log_cfg, paths["PROJECT_NAME"])
+
+    # Register custom levels (AUDIT, LIFECYCLE, TRACE)
+    register_custom_levels(log_cfg)
+
+    # Create a logger for this script
+    logger = logger_factory.get_logger("universal")
+
+    # Optional: lightweight startup messages
+    logger.lifecycle("UNIVERSAL_LOGGER_INIT", "Logger initialized successfully")
+
+    return {
+        "factory": logger_factory,
+        "logger": logger,
+        "config": log_cfg,
+        "paths": paths,
+    }
