@@ -19,7 +19,7 @@ import yaml
 import tomllib
 from pathlib import Path
 from datetime import datetime
-
+from typing import Dict, Any
 
 # ------------------------------------------------------------
 # Generic timestamp helper
@@ -158,3 +158,44 @@ def dict_to_string(d: dict) -> str:
 def coerce_bool(val: str) -> bool:
     """Convert common truthy strings into a boolean."""
     return str(val).lower() in ("1", "true", "yes", "on")
+
+
+def classify_exit_code(
+    step: str,
+    exit_code: int,
+    rules: Dict[str, Any],
+    host_name: str | None = None,
+) -> str:
+    """
+    Generic exit-code classifier used by RunUpdates and SystemdRunner.
+    rules = {
+        "success": [...],
+        "up_to_date": [...],
+        "updates_available": [...],
+        "error": ["*"]
+    }
+    """
+    # Wildcard error rule
+    if "error" in rules and "*" in rules["error"]:
+        for category, values in rules.items():
+            if category == "error":
+                continue
+            if exit_code in values:
+                return category
+
+        raise RuntimeError(
+            f"Host '{host_name}' step '{step}' failed with exit code {exit_code}"
+        )
+
+    # Strict matching
+    for category, values in rules.items():
+        if exit_code in values:
+            return category
+
+    # Fallback: exit code 0 → success
+    if exit_code == 0:
+        return "success"
+
+    raise RuntimeError(
+        f"Host '{host_name}' step '{step}' failed with exit code {exit_code}"
+    )
