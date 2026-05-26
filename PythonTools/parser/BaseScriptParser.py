@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-25
- Modified: 2026-05-25
+ Modified: 2026-05-26
  File: PythonTools/parser/BaseScriptParser.py
  Version: 1.0.0
  Description: Description of this module
@@ -30,7 +30,7 @@ class BaseScriptParser:
       - shared validation hook
     """
 
-    def __init__(self, prog, description, version_string):
+    def __init__(self, prog, description, version_string, default_log_dir):
         self.parser = CheckArgumentParser(
             prog=prog,
             description=description,
@@ -39,6 +39,7 @@ class BaseScriptParser:
         )
 
         self.version_string = version_string
+        self.default_log_dir = default_log_dir
 
         self._add_core_args()
         self._add_logging_args()
@@ -78,7 +79,7 @@ class BaseScriptParser:
         log.add_argument(
             "--log-dir",
             dest="log_dir",
-            default="~/.logs",
+            default=self.default_log_dir,
             help="Folder containing the log file"
         )
 
@@ -86,22 +87,36 @@ class BaseScriptParser:
             "--log-max-mb",
             dest="log_max_mb",
             type=int,
-            default=50,
+            default=5,
             help="Maximum size of logs in MB before rotation"
         )
 
         log.add_argument(
             "--compress-archive",
             dest="compress_archive",
-            action="store_true",
+            action="store_false",
             help="Compress rotated log"
         )
 
         log.add_argument(
             "--delete-log",
             dest="delete_log",
-            action="store_true",
+            action="store_false",
             help="Remove rotated log"
+        )
+
+        log.add_argument(
+            "--archive-mode",
+            choices=["tgz", "zip"],
+            default="zip",
+            help="Archive format for rotated logs"
+        )
+
+        log.add_argument(
+            "--backup-count",
+            type=int,
+            default=7,
+            help="Number of rotated archives to keep"
         )
 
     # --------------------------------------------------------

@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-25
- Modified: 2026-05-25
+ Modified: 2026-05-26
  File: PythonTools/parser/inventory.py
  Version: 1.0.0
  Description: Description of this module
@@ -30,8 +30,8 @@ class InventoryBaseParser(BaseScriptParser):
     Does NOT define any schema (RunUpdates, BotScanner, etc.)
     """
 
-    def __init__(self, prog, description, version_string):
-        super().__init__(prog, description, version_string)
+    def __init__(self, prog, description, version_string, default_log_dir):
+        super().__init__(prog, description, version_string, default_log_dir)
         self._add_inventory_arg()
 
     # --------------------------------------------------------

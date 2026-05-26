@@ -5,15 +5,15 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-14
-Modified: 2026-04-15
+ Modified: 2026-05-26
  File: PythonTools/logging/factory.py
  Version: 1.1.0
  Description: Project-aware logging factory with rotation, archiving, and color support.
 """
 
+import os
 import logging
 from pathlib import Path
-
 from .handlers import ArchiveRotatingFileHandler
 from .logger import Logger
 
@@ -47,6 +47,9 @@ class LoggerFactory:
         self.log_path = Path(log_cfg["path"])
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Rotate once at startup
+        # self._rotate_if_needed()
+
         # Configure the project root logger
         self._configure_root_logger()
 
@@ -69,9 +72,9 @@ class LoggerFactory:
         root_logger.handlers.clear()
 
         # Rotation settings
-        archive_mode = self.log_cfg.get("archive_mode", "tgz")
+        archive_mode = self.log_cfg.get("archive_mode", "zip")
         backup_count = self.log_cfg.get("backup_count", 7)
-        max_bytes = self.log_cfg.get("max_bytes", 50_000_000)
+        max_bytes = self.log_cfg.get("log_max_mb", 5) * 1024 * 1024
 
         # Always use ArchiveRotatingFileHandler
         file_handler = ArchiveRotatingFileHandler(
@@ -80,6 +83,10 @@ class LoggerFactory:
             maxBytes=max_bytes,
             backupCount=backup_count,
         )
+        pth = self.log_path
+        cur = os.path.getsize(pth)
+        if os.path.exists(self.log_path) and os.path.getsize(self.log_path) >= max_bytes:
+            file_handler.doRollover()
 
         # File formatter
         file_handler.setFormatter(

@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-14
- Modified: 2026-05-22
+ Modified: 2026-05-26
  File: PythonTools/logging/helpers.py
  Version: 1.0.1
  Description: Logging initialization helpers for RunUpdates
@@ -25,7 +25,7 @@ def build_log_cfg(paths: dict, run_cfg: dict) -> dict:
     # Base log dir: from CLI or default
     log_dir = run_cfg.get("log_dir", paths["LOG_DIR"])
 
-    log_file = Path(log_dir) / f"{project_name}.log"
+    log_file = Path(os.path.expanduser(log_dir)) / f"{project_name}.log"
 
     # Derive logging-specific settings from run_cfg
     max_mb = run_cfg.get("log_max_mb", 50)
@@ -77,7 +77,6 @@ def resolve_paths(anchor_file: str | Path) -> dict:
         "PROJECT_NAME": project_name,
     }
 
-
 def init_logger(log_cfg: dict, project_name: str):
     """
     Initialize logging using caller-provided configuration.
@@ -87,7 +86,6 @@ def init_logger(log_cfg: dict, project_name: str):
         log_cfg=log_cfg,
         project_name=project_name
     )
-
 
 def register_custom_levels(log_cfg: dict):
     """
@@ -154,3 +152,4 @@ def initialize_universal_logging(paths: dict, run_cfg: dict | None = None) -> di
         "config": log_cfg,
         "paths": paths,
     }
+

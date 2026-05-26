@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-23
- Modified: 2026-05-23
+ Modified: 2026-05-26
  File: PythonTools/utils/parsers.py
  Version: 1.0.0
  Description: Description of this module
@@ -28,7 +28,8 @@ class Parser:
 
         # Debian-family
         "debian.check": {
-            "upgradable": r"\[upgradable from:",
+            "summary": r"(\d+)\s+packages can be upgraded",
+            "up_to_date": r"All packages are up to date",
         },
 
         "debian.update": {
