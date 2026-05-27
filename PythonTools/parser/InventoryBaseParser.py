@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-25
- Modified: 2026-05-26
+ Modified: 2026-05-27
  File: PythonTools/parser/inventory.py
  Version: 1.0.0
  Description: Description of this module
@@ -30,20 +30,28 @@ class InventoryBaseParser(BaseScriptParser):
     Does NOT define any schema (RunUpdates, BotScanner, etc.)
     """
 
-    def __init__(self, prog, description, version_string, default_log_dir):
-        super().__init__(prog, description, version_string, default_log_dir)
-        self._add_inventory_arg()
+    def __init__(self, default_schema_dir=None, **kwargs):
+        self.default_schema_dir = default_schema_dir
+        super().__init__(**kwargs)
+        
+        self._add_inventory_args()
 
     # --------------------------------------------------------
     # Inventory Option
     # --------------------------------------------------------
-    def _add_inventory_arg(self):
+    def _add_inventory_args(self):
         inv = self.parser.add_argument_group("Inventory Options")
 
         inv.add_argument(
             "-i", "--inventory",
             required=False,
             help="Path to inventory YAML file"
+        )
+
+        inv.add_argument(
+            "--schema-dir",
+            default=self.default_schema_dir,
+            help="Override schema directory",
         )
 
     # --------------------------------------------------------

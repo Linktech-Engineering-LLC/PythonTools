@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-14
- Modified: 2026-05-26
+ Modified: 2026-05-27
  File: PythonTools/logging/helpers.py
  Version: 1.0.1
  Description: Logging initialization helpers for RunUpdates
@@ -16,20 +16,26 @@ import os
 from pathlib import Path
 
 from .factory import LoggerFactory
+from ..utils.common import read_toml
 class ConfigError(Exception):
     pass
 
-def build_log_cfg(paths: dict, run_cfg: dict) -> dict:
-    project_name = paths["PROJECT_NAME"]
+def build_log_cfg(context: dict) -> dict:
+    """
+    Build logging configuration using merged CLI + default paths.
+    """
+
+    project_name = context["PROJECT_NAME"]
 
     # Base log dir: from CLI or default
-    log_dir = run_cfg.get("log_dir", paths["LOG_DIR"])
+    log_dir = context.get("log_dir", context["LOG_DIR"])
+    log_dir = Path(os.path.expanduser(log_dir))
 
-    log_file = Path(os.path.expanduser(log_dir)) / f"{project_name}.log"
+    log_file = log_dir / f"{project_name}.log"
 
-    # Derive logging-specific settings from run_cfg
-    max_mb = run_cfg.get("log_max_mb", 50)
-    max_bytes = max_mb * 1_000_000
+    # Derive logging-specific settings from context
+    max_mb = context.get("log_max_mb", 5)
+    max_bytes = max_mb * 1024 * 1024
 
     return {
         # Logging-only flags (not CLI flags)
@@ -39,10 +45,10 @@ def build_log_cfg(paths: dict, run_cfg: dict) -> dict:
         # Derived from CLI
         "path": log_file,
         "max_bytes": max_bytes,
-        "max_age_days": run_cfg.get("log_max_age_days", 30),
-        "console_enabled": not run_cfg.get("no_console", False),
-        "compress_archive": run_cfg.get("compress_archive", False),
-        "delete_log": run_cfg.get("delete_log", False),
+        "max_age_days": context.get("log_max_age_days", 30),
+        "console_enabled": context.get("verbose", False),
+        "compress_archive": context.get("compress_archive", False),
+        "delete_log": context.get("delete_log", False),
 
         # Custom levels
         "custom_levels": {
@@ -52,29 +58,86 @@ def build_log_cfg(paths: dict, run_cfg: dict) -> dict:
         },
 
         # Verbosity
-        "log_level": "DEBUG" if run_cfg.get("verbose") else "INFO",
+        "log_level": "DEBUG" if context.get("verbose") else "INFO",
     }
 
 def resolve_paths(anchor_file: str | Path) -> dict:
     """
     Resolve deterministic project-local paths for ANY project.
     Caller provides __file__ from its own package.
+
+    Detects dev vs installed environment using:
+      - presence of schema/ directory
+      - presence of pyproject.toml
+      - presence of .git/
     """
+
     anchor = Path(anchor_file).resolve()
     package_dir = anchor.parents[1]      # caller's package root
     install_root = package_dir
-    project_name = package_dir.name
 
     log_dir = install_root / "var" / "log"
     config_dir = install_root / "etc"
-    if not config_dir.exists():
-        raise ConfigError(f"Config directory does not exist: {config_dir}")
-    
+
+    # ------------------------------------------------------------
+    # Detect dev environment
+    # ------------------------------------------------------------
+    pyproject_file = package_dir / "pyproject.toml"
+    dev_schema_dir = package_dir / "schema"
+    git_dir = package_dir / ".git"
+
+    is_dev = (
+        dev_schema_dir.exists()
+        or pyproject_file.exists()
+        or git_dir.exists()
+    )
+
+    # ------------------------------------------------------------
+    # Determine project name
+    # ------------------------------------------------------------
+    if is_dev:
+        # Dev mode: use pyproject if available, else folder name
+        if pyproject_file.exists():
+            try:
+                data = read_toml(pyproject_file)
+                project_name = data.get("project", {}).get("name", package_dir.name)
+            except Exception:
+                project_name = package_dir.name
+        else:
+            project_name = package_dir.name
+        environment = "dev"
+
+        # Schema lives in repo
+        schema_dir = dev_schema_dir if dev_schema_dir.exists() else package_dir
+
+    else:
+        # Installed mode: use executable name
+        import sys
+        project_name = Path(sys.argv[0]).name
+        environment = "installed"
+
+        if not config_dir.exists():
+            raise ConfigError(f"Config directory does not exist: {config_dir}")
+
+        schema_dir = config_dir
+
+    summary_base = install_root / "var" / "summaries"
+    summary_host_dir = summary_base / "hosts"
+    summary_run_dir  = summary_base / "runs"
+
+    # Ensure directories exist
+    summary_host_dir.mkdir(parents=True, exist_ok=True)
+    summary_run_dir.mkdir(parents=True, exist_ok=True)
+
     return {
         "ROOT": str(install_root),
         "LOG_DIR": str(log_dir),
         "CONFIG_DIR": str(config_dir),
+        "SCHEMA_DIR": str(schema_dir),
+        "SUMMARY_HOST_DIR": str(summary_host_dir),
+        "SUMMARY_RUN_DIR": str(summary_run_dir),
         "PROJECT_NAME": project_name,
+        "ENVIRONMENT": environment,
     }
 
 def init_logger(log_cfg: dict, project_name: str):
@@ -124,18 +187,17 @@ def register_custom_levels(log_cfg: dict):
         method = make_log_method(value, upper)
         setattr(logging.Logger, upper.lower(), method)
 
-def initialize_universal_logging(paths: dict, run_cfg: dict | None = None) -> dict:
+def initialize_universal_logging(context: dict) -> dict:
     """
     Universal logging initializer using PythonTools helpers.
     Project-agnostic. No RunUpdates dependencies.
     """
-    run_cfg = run_cfg or {}
 
-    # Build logging configuration
-    log_cfg = build_log_cfg(paths, run_cfg)
+    # Build logging configuration from merged context
+    log_cfg = build_log_cfg(context)
 
     # Create logger factory
-    logger_factory = init_logger(log_cfg, paths["PROJECT_NAME"])
+    logger_factory = init_logger(log_cfg, context["PROJECT_NAME"])
 
     # Register custom levels (AUDIT, LIFECYCLE, TRACE)
     register_custom_levels(log_cfg)
@@ -150,6 +212,11 @@ def initialize_universal_logging(paths: dict, run_cfg: dict | None = None) -> di
         "factory": logger_factory,
         "logger": logger,
         "config": log_cfg,
-        "paths": paths,
+        "paths": {
+            "LOG_DIR": context["LOG_DIR"],
+            "CONFIG_DIR": context["CONFIG_DIR"],
+            "SCHEMA_DIR": context["SCHEMA_DIR"],
+            "PROJECT_NAME": context["PROJECT_NAME"],
+            "ENVIRONMENT": context.get("ENVIRONMENT"),
+        },
     }
-

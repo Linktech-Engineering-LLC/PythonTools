@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-25
- Modified: 2026-05-26
+ Modified: 2026-05-27
  File: PythonTools/parser/BaseScriptParser.py
  Version: 1.0.0
  Description: Description of this module
@@ -30,7 +30,7 @@ class BaseScriptParser:
       - shared validation hook
     """
 
-    def __init__(self, prog, description, version_string, default_log_dir):
+    def __init__(self, prog, description, version_string, default_log_dir=None, default_config_dir=None):
         self.parser = CheckArgumentParser(
             prog=prog,
             description=description,
@@ -40,10 +40,12 @@ class BaseScriptParser:
 
         self.version_string = version_string
         self.default_log_dir = default_log_dir
+        self.default_config_dir = default_config_dir
 
         self._add_core_args()
         self._add_logging_args()
         self._add_vault_args()
+        self._add_cfg_args()
 
     # --------------------------------------------------------
     # Core Options
@@ -119,6 +121,18 @@ class BaseScriptParser:
             help="Number of rotated archives to keep"
         )
 
+    # --------------------------------------------------------
+    # Config Options
+    # --------------------------------------------------------
+    def _add_cfg_args(self):
+        cfg = self.parser.add_argument_group("Config Options")
+    
+        cfg.add_argument(
+            "--config-dir",
+            default=self.default_config_dir,
+            help="Override config directory",
+        )        
+    
     # --------------------------------------------------------
     # Vault Options
     # --------------------------------------------------------
