@@ -14,6 +14,7 @@ Modified: 2026-04-15
         specific to RunUpdates, TimerDeck, BotScanner, or any other project.
 """
 
+import sys
 import json
 import yaml
 import tomllib
@@ -29,6 +30,29 @@ def current_timestamp() -> str:
     """Return a timezone-aware timestamp in ISO format."""
     return datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S %Z%z")
 
+import json
+import sys
+
+def json_output(data, force_color=False):
+    is_tty = sys.stdout.isatty()
+
+    # Pretty JSON for TTY, compact for pipes
+    if is_tty:
+        text = json.dumps(data, indent=2)
+    else:
+        text = json.dumps(data, separators=(",", ":"))
+
+    # Optional colorization
+    if (force_color or is_tty):
+        try:
+            from pygments import highlight
+            from pygments.lexers import JsonLexer
+            from pygments.formatters import TerminalFormatter
+            return highlight(text, JsonLexer(), TerminalFormatter())
+        except ImportError:
+            return text
+
+    return text
 
 # ------------------------------------------------------------
 # Generic size parser

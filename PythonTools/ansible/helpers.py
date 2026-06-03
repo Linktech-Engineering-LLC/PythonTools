@@ -6,13 +6,31 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-22
- Modified: 2026-05-22
+ Modified: 2026-05-30
  File: PythonTools/ansible/helpers.py
  Version: 1.0.0
  Description: Description of this module
 """
+import yaml
 from pathlib import Path
+class InventoryError(Exception):
+    pass
+class InventoryLoadError(Exception):
+    pass
 
+def load_yaml(path: Path) -> dict:
+    """
+    Generic YAML loader used by PythonTools and applications.
+    Returns {} if file is empty.
+    Raises IOError or YAML errors naturally.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+        return yaml.safe_load(text) or {}
+    except Exception as exc:
+        raise InventoryError(f"Invalid YAML syntax in: {path}") from exc
+    
+    
 def resolve_path(path: str | Path) -> Path:
     """
     Expand ~, resolve relative paths, and return an absolute Path.
@@ -37,3 +55,4 @@ def resolve_with_priority(cli_value: str | None, env_value: str | None, default:
         return resolve_path(default)
 
     return None
+

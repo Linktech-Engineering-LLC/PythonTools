@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-14
- Modified: 2026-05-27
+ Modified: 2026-05-31
  File: PythonTools/logging/helpers.py
  Version: 1.0.1
  Description: Logging initialization helpers for RunUpdates
@@ -14,10 +14,13 @@
 import logging
 import os
 from pathlib import Path
+from dataclasses import dataclass
 
-from .factory import LoggerFactory
-from ..utils.common import read_toml
+from PythonTools.log_helpers.factory import LoggerFactory
+from PythonTools.utils.common import read_toml
 class ConfigError(Exception):
+    pass
+class InventoryError(Exception):
     pass
 
 def build_log_cfg(context: dict) -> dict:
@@ -26,15 +29,15 @@ def build_log_cfg(context: dict) -> dict:
     """
 
     project_name = context["PROJECT_NAME"]
-
     # Base log dir: from CLI or default
-    log_dir = context.get("log_dir", context["LOG_DIR"])
+    log_dir = context["paths"].LOG_DIR
+    project_name = context["PROJECT_NAME"]
+    
     log_dir = Path(os.path.expanduser(log_dir))
-
     log_file = log_dir / f"{project_name}.log"
-
+    args = context["args"]
     # Derive logging-specific settings from context
-    max_mb = context.get("log_max_mb", 5)
+    max_mb = getattr(args, "log_max_mb", 5)
     max_bytes = max_mb * 1024 * 1024
 
     return {
@@ -45,10 +48,10 @@ def build_log_cfg(context: dict) -> dict:
         # Derived from CLI
         "path": log_file,
         "max_bytes": max_bytes,
-        "max_age_days": context.get("log_max_age_days", 30),
-        "console_enabled": context.get("verbose", False),
-        "compress_archive": context.get("compress_archive", False),
-        "delete_log": context.get("delete_log", False),
+        "max_age_days": getattr(args, "log_max_age_days", 30),
+        "console_enabled": getattr(args, "verbose", False),
+        "compress_archive": getattr(args,"compress_archive", False),
+        "delete_log": getattr(args, "delete_log", False),
 
         # Custom levels
         "custom_levels": {
@@ -58,87 +61,25 @@ def build_log_cfg(context: dict) -> dict:
         },
 
         # Verbosity
-        "log_level": "DEBUG" if context.get("verbose") else "INFO",
+        "log_level": "DEBUG" if getattr(args, "verbose", False) else "INFO",
     }
 
-def resolve_paths(anchor_file: str | Path) -> dict:
-    """
-    Resolve deterministic project-local paths for ANY project.
-    Caller provides __file__ from its own package.
+@dataclass
+class Paths:
+    BASE_DIR: Path
+    LOG_DIR: Path
+    SUMMARY_RUN_DIR: Path
+    SUMMARY_HOST_DIR: Path
 
-    Detects dev vs installed environment using:
-      - presence of schema/ directory
-      - presence of pyproject.toml
-      - presence of .git/
-    """
+def resolve_paths(module_file: str) -> Paths:
+    base = Path(module_file).resolve().parent
 
-    anchor = Path(anchor_file).resolve()
-    package_dir = anchor.parents[1]      # caller's package root
-    install_root = package_dir
-
-    log_dir = install_root / "var" / "log"
-    config_dir = install_root / "etc"
-
-    # ------------------------------------------------------------
-    # Detect dev environment
-    # ------------------------------------------------------------
-    pyproject_file = package_dir / "pyproject.toml"
-    dev_schema_dir = package_dir / "schema"
-    git_dir = package_dir / ".git"
-
-    is_dev = (
-        dev_schema_dir.exists()
-        or pyproject_file.exists()
-        or git_dir.exists()
+    return Paths(
+        BASE_DIR=base,
+        LOG_DIR=base / "var" / "log",
+        SUMMARY_RUN_DIR=base / "var" / "log" / "summaries" / "runs",
+        SUMMARY_HOST_DIR=base / "var" / "log" / "summaries" / "hosts",
     )
-
-    # ------------------------------------------------------------
-    # Determine project name
-    # ------------------------------------------------------------
-    if is_dev:
-        # Dev mode: use pyproject if available, else folder name
-        if pyproject_file.exists():
-            try:
-                data = read_toml(pyproject_file)
-                project_name = data.get("project", {}).get("name", package_dir.name)
-            except Exception:
-                project_name = package_dir.name
-        else:
-            project_name = package_dir.name
-        environment = "dev"
-
-        # Schema lives in repo
-        schema_dir = dev_schema_dir if dev_schema_dir.exists() else package_dir
-
-    else:
-        # Installed mode: use executable name
-        import sys
-        project_name = Path(sys.argv[0]).name
-        environment = "installed"
-
-        if not config_dir.exists():
-            raise ConfigError(f"Config directory does not exist: {config_dir}")
-
-        schema_dir = config_dir
-
-    summary_base = install_root / "var" / "summaries"
-    summary_host_dir = summary_base / "hosts"
-    summary_run_dir  = summary_base / "runs"
-
-    # Ensure directories exist
-    summary_host_dir.mkdir(parents=True, exist_ok=True)
-    summary_run_dir.mkdir(parents=True, exist_ok=True)
-
-    return {
-        "ROOT": str(install_root),
-        "LOG_DIR": str(log_dir),
-        "CONFIG_DIR": str(config_dir),
-        "SCHEMA_DIR": str(schema_dir),
-        "SUMMARY_HOST_DIR": str(summary_host_dir),
-        "SUMMARY_RUN_DIR": str(summary_run_dir),
-        "PROJECT_NAME": project_name,
-        "ENVIRONMENT": environment,
-    }
 
 def init_logger(log_cfg: dict, project_name: str):
     """
@@ -213,9 +154,7 @@ def initialize_universal_logging(context: dict) -> dict:
         "logger": logger,
         "config": log_cfg,
         "paths": {
-            "LOG_DIR": context["LOG_DIR"],
-            "CONFIG_DIR": context["CONFIG_DIR"],
-            "SCHEMA_DIR": context["SCHEMA_DIR"],
+            "LOG_DIR": context["paths"].LOG_DIR,
             "PROJECT_NAME": context["PROJECT_NAME"],
             "ENVIRONMENT": context.get("ENVIRONMENT"),
         },

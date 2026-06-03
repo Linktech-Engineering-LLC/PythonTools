@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-21
- Modified: 2026-05-22
+ Modified: 2026-05-30
  File: PythonTools/ansible/loader.py
  Version: 1.0.0
  Description: 
@@ -21,13 +21,11 @@
 from __future__ import annotations
 
 import yaml
-
 from pathlib import Path
 
+from .helpers import load_yaml, InventoryError
 
 class SchemaError(Exception):
-    pass
-class InventoryError(Exception):
     pass
 class InventoryLoadError(Exception):
     pass
@@ -59,11 +57,7 @@ class GenericInventoryLoader:
     def _load_yaml(self, path: Path) -> dict:
         if not path.exists():
             raise InventoryError(f"File not found: {path}")
-
-        try:
-            return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        except Exception as exc:
-            raise InventoryError(f"Invalid YAML syntax in: {path}") from exc
+        return load_yaml(path)
 
     # ------------------------------------------------------------
     # Public API

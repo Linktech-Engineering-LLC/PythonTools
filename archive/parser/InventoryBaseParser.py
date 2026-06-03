@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-25
- Modified: 2026-05-27
+ Modified: 2026-05-30
  File: PythonTools/parser/inventory.py
  Version: 1.0.0
  Description: Description of this module
@@ -30,8 +30,7 @@ class InventoryBaseParser(BaseScriptParser):
     Does NOT define any schema (RunUpdates, BotScanner, etc.)
     """
 
-    def __init__(self, default_schema_dir=None, **kwargs):
-        self.default_schema_dir = default_schema_dir
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
         self._add_inventory_args()
@@ -50,7 +49,6 @@ class InventoryBaseParser(BaseScriptParser):
 
         inv.add_argument(
             "--schema-dir",
-            default=self.default_schema_dir,
             help="Override schema directory",
         )
 
@@ -69,23 +67,6 @@ class InventoryBaseParser(BaseScriptParser):
             self.inventory_data = None
 
         return args
-
-    # --------------------------------------------------------
-    # Inventory Validation
-    # --------------------------------------------------------
-    def _validate_inventory_path(self):
-        if self.inventory_path is None:
-            return  # No inventory provided; child class may enforce requirements
-
-        if not self.inventory_path.exists():
-            raise CheckArgError(f"Inventory file not found: {self.inventory_path}")
-
-    def _load_inventory_yaml(self):
-        try:
-            with open(str(self.inventory_path), "r", encoding="utf-8") as f:
-                return yaml.safe_load(f) or {}
-        except Exception as e:
-            raise CheckArgError(f"Failed to load inventory YAML: {e}")
 
     # --------------------------------------------------------
     # Schema Validation Hook

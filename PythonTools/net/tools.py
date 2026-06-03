@@ -5,7 +5,7 @@ Package: PythonTools
 Author: Leon McClatchey
 Company: Linktech Engineering LLC
 Created: 2025-12-31
-Modified: 2026-02-10
+ Modified: 2026-05-30
 File: PythonTools/net_tools.py
 Description: Describe the purpose of this file
 """
@@ -17,7 +17,7 @@ import shlex
 from typing import Optional
 from types import SimpleNamespace
 # Project Libraries
-from ..logging.factory import LoggerFactory
+from ..log_helpers.factory import LoggerFactory
 
 # Function to verify that a host exists
 def host_exists(hostname: str):

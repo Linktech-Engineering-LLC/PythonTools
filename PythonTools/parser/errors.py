@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-25
- Modified: 2026-05-25
+ Modified: 2026-05-30
  File: PythonTools/parser/errors.py
  Version: 1.0.0
  Description: Description of this module
@@ -19,10 +19,12 @@ import argparse
 
 class CheckArgError(Exception):
     pass
-
 class CheckArgumentParser(argparse.ArgumentParser):
     def error(self, message):
-        print(f"ERROR: {message}\n")
-        self.print_help()
-        sys.exit(1)
+        # Allow missing subcommand so ScriptParser can set a default
+        if "the following arguments are required: command" in message:
+            raise argparse.ArgumentError(None, message)
+
+        # Otherwise behave normally
+        super().error(message)
 
