@@ -5,11 +5,13 @@ Package: PythonTools
 Author: Leon McClatchey
 Company: Linktech Engineering LLC
 Created: 2025-12-31
- Modified: 2026-05-30
-File: PythonTools/net_tools.py
+ Modified: 2026-06-06
+File: PythonTools/net/tools.py
 Description: Describe the purpose of this file
 """
 # System Libraries
+import os
+import errno
 import ipaddress
 import socket
 import subprocess
@@ -17,7 +19,6 @@ import shlex
 from typing import Optional
 from types import SimpleNamespace
 # Project Libraries
-from ..log_helpers.factory import LoggerFactory
 
 # Function to verify that a host exists
 def host_exists(hostname: str):
@@ -115,8 +116,18 @@ def run_with_error_handling(cmd: str, sudo_password: Optional[str], raise_on_err
     Ensures audit-friendly error handling across all modules.
     """
     return sudo_run(cmd, sudo_password=sudo_password, raise_on_error=raise_on_error, **kwargs)
-
-
+# Function to determine if a pid is running/valid
+def pid_is_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except OSError as e:
+        if e.errno == errno.ESRCH:
+            return False   # No such process
+        if e.errno == errno.EPERM:
+            return True    # Process exists, but no permission
+        raise
+    else:
+        return True
 # Sudo Command Function
 def sudo_run(
     cmd: str,
