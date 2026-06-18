@@ -4,17 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "PythonTools"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Shared cross-platform utilities for Linktech Engineering tooling ecosystem."
 authors = [
     { name = "Leon McClatchey", email = "ldmcclatchey@linktechengineering.net" }
 ]
 requires-python = ">=3.12"
-readme = "README.md"
+readme = {file = "README.md", content-type = "text/markdown"}
 
 dependencies = [
     # Add real deps later if needed
 ]
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
 
 [tool.setuptools.packages.find]
 where = ["."]
