@@ -34,19 +34,26 @@ def detect_type(symbol: str) -> str:
 
 
 class MarketObjectEngine:
+    def __init__(self, api_keys: dict):
+        self.alphavantage_key = api_keys.get("alphavantage", "")
+        self.finnhub_key = api_keys.get("finnhub", "")
+        self.coingecko_key = api_keys.get("coingecko", "")
+
     def get_quote(self, symbol: str) -> QuoteResult:
         t = detect_type(symbol)
 
         if t in ("stock", "forex", "commodity"):
-            return fetch_alpha_stock(symbol)
+            return fetch_alpha_stock(symbol, self.alphavantage_key)
 
         if t == "crypto":
-            r = fetch_finnhub_crypto(symbol)
+            r = fetch_finnhub_crypto(symbol, self.finnhub_key)
             if not r.is_error():
                 return r
-            r = fetch_yahoo_crypto(symbol)
+
+            r = fetch_yahoo_crypto(symbol)  # Yahoo does not require a key
             if not r.is_error():
                 return r
-            return fetch_coingecko_crypto(symbol)
+
+            return fetch_coingecko_crypto(symbol, self.coingecko_key)
 
         return QuoteResult(0, 0, error="Unknown symbol type")

@@ -12,7 +12,6 @@
 """
 
 import requests
-from PythonTools.finance.api_keys import get_api_key
 from PythonTools.market.objects import QuoteResult
 
 COINGECKO_MAP = {
@@ -27,26 +26,25 @@ COINGECKO_MAP = {
 }
 
 
-def fetch_coingecko_crypto(symbol: str) -> QuoteResult:
-    try:
-        key = get_api_key("coingecko")
-    except Exception:
-        return QuoteResult(0, 0, error="Missing CoinGecko API key")
+def fetch_coingecko_crypto(symbol: str, key: str) -> QuoteResult:
 
     cg_id = COINGECKO_MAP.get(symbol.upper())
     if not cg_id:
         return QuoteResult(0, 0, error="CoinGecko: unknown symbol")
 
-
     url = (
-        "https://api.coingecko.com/api/v3/simple/price"
-        f"?ids={cg_id}&vs_currencies=usd&include_24hr_change=true"
+        "https://api.coingecko.com/api/v3/coins/markets"
+        f"?vs_currency=usd&ids={cg_id}"
+        "&order=market_cap_desc"
+        "&per_page=1&page=1"
+        "&sparkline=true"
+        "&price_change_percentage=1h,24h,7d,14d,30d,200d,1y"
     )
 
     headers = {
         "x-cg-demo-api-key": key
     }
-        
+
     try:
         r = requests.get(url, timeout=10)
     except Exception as e:
@@ -60,14 +58,19 @@ def fetch_coingecko_crypto(symbol: str) -> QuoteResult:
     except Exception:
         return QuoteResult(0, 0, error="CoinGecko returned invalid JSON")
 
-    if cg_id not in data:
+    # /coins/markets ALWAYS returns a list
+    if not isinstance(data, list) or not data:
         return QuoteResult(0, 0, error="CoinGecko returned no data")
 
-    entry = data[cg_id]
+    entry = data[0]
+
+    # Validate ID match
+    if entry.get("id") != cg_id:
+        return QuoteResult(0, 0, error="CoinGecko ID mismatch")
 
     try:
-        last = float(entry["usd"])
-        pct = float(entry.get("usd_24h_change", 0.0))
+        last = float(entry["current_price"])
+        pct = float(entry.get("price_change_percentage_24h", 0.0))
     except Exception:
         return QuoteResult(0, 0, error="CoinGecko returned invalid fields")
 

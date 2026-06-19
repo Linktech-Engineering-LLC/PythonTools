@@ -15,13 +15,11 @@
 
 import requests
 
-from PythonTools.finance.api_keys import get_api_key
 from PythonTools.market.objects import QuoteResult
 
 ALPHA_URL = "https://www.alphavantage.co/query"
 
-def fetch_alpha_stock(symbol: str) -> QuoteResult:
-    key = get_api_key("alphavantage")
+def fetch_alpha_stock(symbol: str, key: str) -> QuoteResult:
     if not key:
         return QuoteResult(0, 0, error="Missing AlphaVantage API key")
 

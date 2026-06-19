@@ -15,12 +15,13 @@ Modified: 2026-04-15
 """
 
 import sys
+import os
 import json
 import yaml
 import tomllib
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # ------------------------------------------------------------
 # Generic timestamp helper
@@ -29,9 +30,6 @@ from typing import Dict, Any
 def current_timestamp() -> str:
     """Return a timezone-aware timestamp in ISO format."""
     return datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S %Z%z")
-
-import json
-import sys
 
 def json_output(data, force_color=False):
     is_tty = sys.stdout.isatty()
@@ -103,6 +101,11 @@ def load_json(path: str | Path) -> dict:
 def resolve_path(path: str | Path) -> Path:
     """Expand ~ and return an absolute resolved Path."""
     return Path(path).expanduser().resolve()
+
+def normalize_path(p: Optional[str]) -> Optional[str]:
+    if not p:
+        return None
+    return str(Path(os.path.expandvars(os.path.expanduser(p))))
 
 
 # ------------------------------------------------------------
