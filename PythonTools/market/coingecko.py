@@ -74,4 +74,10 @@ def fetch_coingecko_crypto(symbol: str, key: str) -> QuoteResult:
     except Exception:
         return QuoteResult(0, 0, error="CoinGecko returned invalid fields")
 
-    return QuoteResult(last, pct)
+    return QuoteResult(
+        price=last, 
+        pct=pct,
+        provider="coingecko",
+        timestamp=entry.get("last_updated"),
+        raw=entry,
+        )

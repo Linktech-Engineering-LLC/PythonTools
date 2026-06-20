@@ -41,7 +41,7 @@ def json_output(data, force_color=False):
         text = json.dumps(data, separators=(",", ":"))
 
     # Optional colorization
-    if (force_color or is_tty):
+    if (force_color):
         try:
             from pygments import highlight
             from pygments.lexers import JsonLexer

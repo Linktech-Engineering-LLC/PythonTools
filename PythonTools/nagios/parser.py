@@ -100,6 +100,8 @@ class BaseNagiosParser:
                          help="JSON output mode")
         out.add_argument("-q", "--quiet", action="store_true",
                          help="Quiet mode (exit code only)")
+        out.add_argument("--color", action="store_true",
+                         help="Colorize the terminal display (json/verbose)")
 
     def _add_shared_logging_flags(self):
         log = self.parser.add_argument_group("Logging")

@@ -12,6 +12,7 @@
 """
 
 import os
+import sys
 import logging
 from pathlib import Path
 from .handlers import ArchiveRotatingFileHandler
@@ -100,7 +101,8 @@ class LoggerFactory:
 
         # Console handler
         if self.log_cfg.get("console_enabled", True):
-            stream_handler = logging.StreamHandler()
+            stream = self.log_cfg.get("console_stream", sys.stderr)
+            stream_handler = logging.StreamHandler(stream)
 
             if self.log_cfg.get("color", False):
                 stream_handler.setFormatter(

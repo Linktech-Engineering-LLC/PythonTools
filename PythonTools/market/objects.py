@@ -18,11 +18,27 @@ from typing import List, Optional
 
 @dataclass
 class QuoteResult:
-    price: float
-    pct: float
-    history: Optional[List[float]] = None
-    trend: str = "unknown"
-    error: Optional[str] = None
-
+    def __init__(
+        self,
+        price,
+        pct,
+        provider=None,
+        timestamp=None,
+        raw=None,
+        history=None,
+        slope=None,
+        fallback_chain=None,
+        error=None,
+    ):
+        self.price = price
+        self.pct = pct
+        self.provider = provider
+        self.timestamp = timestamp
+        self.raw = raw or {}
+        self.history = history or []
+        self.slope = slope
+        self.fallback_chain = fallback_chain or []
+        self.error = error
+        
     def is_error(self):
         return self.error is not None
