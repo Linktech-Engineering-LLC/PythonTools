@@ -8,13 +8,18 @@
  Modified: 2026-06-17
  File: PythonTools/market/router.py
  Version: 1.0.0
- Description: Module description here
+ Description:
+            Central routing engine for all market data requests. Determines the asset type
+            (stock, forex, commodity, crypto) and dispatches to the appropriate provider
+            (Finnhub, Yahoo, CoinGecko). Handles fallback logic, normalizes
+            results into QuoteResult objects, and prepares data for trend and history
+            analysis. This module acts as the unified entry point for all market queries.
 """
-from PythonTools.market.alpha import fetch_alpha_stock
 from PythonTools.market.coingecko import fetch_coingecko_crypto
 from PythonTools.market.finnhub import fetch_finnhub_crypto
-from PythonTools.market.yahoo import fetch_yahoo_crypto
+from PythonTools.market.yahoo import fetch_yahoo_crypto, fetch_yahoo_stock
 from PythonTools.market.objects import QuoteResult
+from PythonTools.market.trend import extract_history, compute_trend_and_slope
 
 
 def detect_type(symbol: str) -> str:
@@ -35,25 +40,35 @@ def detect_type(symbol: str) -> str:
 
 class MarketObjectEngine:
     def __init__(self, api_keys: dict):
-        self.alphavantage_key = api_keys.get("alphavantage", "")
         self.finnhub_key = api_keys.get("finnhub", "")
         self.coingecko_key = api_keys.get("coingecko", "")
 
     def get_quote(self, symbol: str) -> QuoteResult:
         t = detect_type(symbol)
 
+        result = None
+
         if t in ("stock", "forex", "commodity"):
-            return fetch_alpha_stock(symbol, self.alphavantage_key)
+            result = fetch_yahoo_stock(symbol)
 
-        if t == "crypto":
-            r = fetch_finnhub_crypto(symbol, self.finnhub_key)
+        elif t == "crypto":
+            # CoinGecko first
+            r = fetch_coingecko_crypto(symbol, self.coingecko_key)
             if not r.is_error():
-                return r
+                result = r
+            else:
+                # Yahoo fallback
+                r = fetch_yahoo_crypto(symbol)
+                if not r.is_error():
+                    result = r
+                else:
+                    # Finnhub fallback
+                    result = fetch_finnhub_crypto(symbol, self.finnhub_key)
 
-            r = fetch_yahoo_crypto(symbol)  # Yahoo does not require a key
-            if not r.is_error():
-                return r
+        else:
+            return QuoteResult(0, 0, error="Unknown symbol type")
 
-            return fetch_coingecko_crypto(symbol, self.coingecko_key)
+        # --- POST PROCESSING (applied once) ---
+        result.history = extract_history(result)
 
-        return QuoteResult(0, 0, error="Unknown symbol type")
+        return result

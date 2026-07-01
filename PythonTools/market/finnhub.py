@@ -8,7 +8,12 @@
  Modified: 2026-06-17
  File: PythonTools/market/finnhub.py
  Version: 1.0.0
- Description: Module description here
+ Description:
+            Implements Finnhub support for cryptocurrency OHLCV candle data. Attempts to
+            retrieve recent historical candles using the crypto/candle endpoint and
+            gracefully handles free‑tier limitations. When successful, returns full OHLCV
+            arrays and timestamps through QuoteResult.raw, enabling trend and history
+            analysis for supported symbols.
 """
 # PythonTools/market/finnhub.py
 
@@ -21,15 +26,9 @@ def fetch_finnhub_crypto(symbol: str,
                          api_key: str,
                          resolution: str = "D",
                          count: int = 1):
-    """
-    Support-only Finnhub provider.
-    Attempts to fetch candles, but gracefully fails on free-tier keys.
-    """
 
     url = "https://finnhub.io/api/v1/crypto/candle"
 
-    # Finnhub candle requires from/to, so we simulate a minimal window.
-    # This is allowed even on paid plans.
     now = int(time.time())
     frm = now - (count * 86400)
 
@@ -44,23 +43,29 @@ def fetch_finnhub_crypto(symbol: str,
     try:
         r = requests.get(url, params=params, timeout=5)
 
-        # Detect HTML (free-tier rejection)
+        # Free-tier rejection
         if r.text.startswith("<!DOCTYPE html>"):
             return QuoteResult(0, 0, error="Finnhub: HTML response (likely no access)")
 
         data = r.json()
 
-        # Finnhub error
         if data.get("s") != "ok":
             return QuoteResult(0, 0, error=f"Finnhub error: {data.get('s')}")
 
-        # Extract last candle
         closes = data.get("c", [])
         if not closes:
             return QuoteResult(0, 0, error="Finnhub: no candle data")
 
         price = closes[-1]
-        return QuoteResult(price, 0)
+        timestamp = data.get("t", [None])[-1]
+
+        return QuoteResult(
+            price=price,
+            pct=0,
+            provider="finnhub",
+            timestamp=timestamp,
+            raw=data
+        )
 
     except Exception as e:
         return QuoteResult(0, 0, error=f"Finnhub exception: {e}")

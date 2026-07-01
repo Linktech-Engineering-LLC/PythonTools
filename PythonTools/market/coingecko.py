@@ -8,7 +8,13 @@
  Modified: 2026-06-17
  File: PythonTools/market/coingecko.py
  Version: 1.0.0
- Description: Module description here
+ Description:
+            Implements the CoinGecko provider for cryptocurrency market data. This module
+            maps common ticker symbols to CoinGecko asset IDs and retrieves full market
+            metadata using the /coins/{id} endpoint. Returned data includes current price,
+            percent changes, sparkline history, market statistics, and extended metadata
+            such as categories, community metrics, developer activity, and descriptive
+            content. Results are normalized into QuoteResult objects.
 """
 
 import requests
@@ -27,57 +33,45 @@ COINGECKO_MAP = {
 
 
 def fetch_coingecko_crypto(symbol: str, key: str) -> QuoteResult:
-
     cg_id = COINGECKO_MAP.get(symbol.upper())
     if not cg_id:
         return QuoteResult(0, 0, error="CoinGecko: unknown symbol")
 
     url = (
-        "https://api.coingecko.com/api/v3/coins/markets"
-        f"?vs_currency=usd&ids={cg_id}"
-        "&order=market_cap_desc"
-        "&per_page=1&page=1"
+        f"https://api.coingecko.com/api/v3/coins/{cg_id}"
+        "?localization=false"
+        "&tickers=false"
+        "&market_data=true"
+        "&community_data=false"
+        "&developer_data=false"
         "&sparkline=true"
-        "&price_change_percentage=1h,24h,7d,14d,30d,200d,1y"
     )
-
-    headers = {
-        "x-cg-demo-api-key": key
-    }
+    headers = {"x-cg-pro-api-key": key} if key else {}
 
     try:
-        r = requests.get(url, timeout=10)
-    except Exception as e:
-        return QuoteResult(0, 0, error=f"CoinGecko request failed: {e}")
-
-    if r.status_code != 200:
-        return QuoteResult(0, 0, error=f"CoinGecko HTTP {r.status_code}")
-
-    try:
+        r = requests.get(url, headers=headers, timeout=10)
         data = r.json()
-    except Exception:
-        return QuoteResult(0, 0, error="CoinGecko returned invalid JSON")
+    except Exception as exc:
+        return QuoteResult(0, 0, error=f"CoinGecko request failed: {exc}")
 
-    # /coins/markets ALWAYS returns a list
-    if not isinstance(data, list) or not data:
-        return QuoteResult(0, 0, error="CoinGecko returned no data")
+    if "error" in data:
+        return QuoteResult(0, 0, error=f"CoinGecko error: {data['error']}")
 
-    entry = data[0]
+    market = data.get("market_data", {})
+    if not market:
+        return QuoteResult(0, 0, error="CoinGecko: no market data")
 
-    # Validate ID match
-    if entry.get("id") != cg_id:
-        return QuoteResult(0, 0, error="CoinGecko ID mismatch")
+    price = market.get("current_price", {}).get("usd")
+    pct = market.get("price_change_percentage_24h", 0) / 100.0
+    timestamp = data.get("last_updated")
 
-    try:
-        last = float(entry["current_price"])
-        pct = float(entry.get("price_change_percentage_24h", 0.0))
-    except Exception:
-        return QuoteResult(0, 0, error="CoinGecko returned invalid fields")
+    if price is None:
+        return QuoteResult(0, 0, error="Coingecko: missing price")
 
     return QuoteResult(
-        price=last, 
+        price=price,
         pct=pct,
         provider="coingecko",
-        timestamp=entry.get("last_updated"),
-        raw=entry,
-        )
+        timestamp=timestamp,
+        raw=data
+    )

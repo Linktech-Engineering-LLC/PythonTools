@@ -8,42 +8,101 @@
  Modified: 2026-06-17
  File: PythonTools/market/yahoo.py
  Version: 1.0.0
- Description: Module description here
+ Description:
+            Provides Yahoo Finance fallback support for cryptocurrency tickers. Retrieves
+            chart metadata including timestamps and close‑price arrays, enabling basic
+            historical extraction when other providers fail. Full Yahoo chart responses
+            are preserved in QuoteResult.raw for downstream consumers.
+            
+            Yahoo Finance fallback providers using yahooquery.
 """
 
-
-# PythonTools/market/yahoo.py
-
-import requests
+from yahooquery import Ticker
 from PythonTools.market.objects import QuoteResult
 
-YAHOO_URL = "https://query1.finance.yahoo.com/v8/finance/chart/"
-
 def fetch_yahoo_crypto(symbol: str) -> QuoteResult:
-    url = f"{YAHOO_URL}{symbol.upper()}-USD"
+    yf_symbol = f"{symbol.upper()}-USD"
 
     try:
-        r = requests.get(url, timeout=10)
-    except Exception as e:
-        return QuoteResult(0, 0, error=f"Yahoo request failed: {e}")
+        t = Ticker(yf_symbol)
+        df = t.history(period="1mo", interval="1d")
+    except Exception as exc:
+        return QuoteResult(0, 0, error=f"YahooQuery exception: {exc}")
 
-    # Bail out early on bad HTTP status
-    if r.status_code != 200:
-        return QuoteResult(0, 0, error=f"Yahoo HTTP {r.status_code}")
+    if df is None or len(df) == 0:
+        return QuoteResult(0, 0, error="YahooQuery: no history data")
 
-    # Try JSON parsing — if it fails, return None/error immediately
     try:
-        data = r.json()
+        closes = df["close"].tolist()
     except Exception:
-        return QuoteResult(0, 0, error="Yahoo returned invalid JSON")
+        return QuoteResult(0, 0, error="YahooQuery: malformed history")
 
-    # Validate structure
+    if not closes:
+        return QuoteResult(0, 0, error="YahooQuery: empty close array")
+
+    price = closes[-1]
+
+    raw_dict = {
+        col: [float(v) for v in series.tolist() if v is not None]
+        for col, series in df.items()
+    }
+    raw_dict = dict(raw_dict)
+
+    return QuoteResult(
+        price=price,
+        pct=0,
+        provider="yahoo_crypto",
+        timestamp=None,
+        raw=raw_dict
+    )
+
+def fetch_yahoo_stock(symbol: str) -> QuoteResult:
     try:
-        result = data["chart"]["result"][0]
-        close = result["indicators"]["quote"][0]["close"]
-        last = close[-1]
-        prev = close[-2]
-        pct = ((last - prev) / prev) * 100
-        return QuoteResult(last, pct)
+        t = Ticker(symbol)
+        df = t.history(period="1mo", interval="1d")
+    except Exception as exc:
+        return QuoteResult(0, 0, error=f"YahooQuery exception: {exc}")
+
+    if df is None or len(df) == 0:
+        return QuoteResult(0, 0, error="YahooQuery: no history data")
+
+    try:
+        closes = df["close"].tolist()
     except Exception:
-        return QuoteResult(0, 0, error="Yahoo JSON missing expected fields")
+        return QuoteResult(0, 0, error="YahooQuery: malformed history")
+
+    if not closes:
+        return QuoteResult(0, 0, error="YahooQuery: empty close array")
+
+    price = closes[-1]
+
+    # IMPORTANT: convert DataFrame to dict
+    raw_dict = {
+        col: [float(v) for v in series.tolist() if v is not None]
+        for col, series in df.items()
+    }
+    raw_dict = dict(raw_dict)
+
+    return QuoteResult(
+        price=price,
+        pct=0,
+        provider="yahoo_stock",
+        timestamp=None,
+        raw=raw_dict
+    )
+
+def fetch_yahoo_stock_history(symbol: str):
+    """
+    History-only version for trend extraction.
+    """
+    try:
+        t = Ticker(symbol)
+        data = t.history(period="1mo", interval="1d")
+    except Exception:
+        return []
+
+    try:
+        closes = data["close"].tolist()
+        return [c for c in closes if c is not None]
+    except Exception:
+        return []

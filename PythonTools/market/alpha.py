@@ -8,7 +8,12 @@
  Modified: 2026-06-17
  File: PythonTools/market/alpha.py
  Version: 1.0.0
- Description: Module description here
+ Description:
+            Provides AlphaVantage integration for equities, commodities, and forex quotes.
+            Uses the GLOBAL_QUOTE endpoint to retrieve current price, percent change, and
+            associated quote metadata. The full AlphaVantage response is preserved and
+            returned via QuoteResult.raw for downstream processing. This module serves as
+            the primary provider for non‑crypto tickers.
 """
 
 # PythonTools/market/alpha.py
@@ -47,4 +52,51 @@ def fetch_alpha_stock(symbol: str, key: str) -> QuoteResult:
     except Exception:
         return QuoteResult(0, 0, error="Malformed AlphaVantage response")
 
-    return QuoteResult(price, pct)
+    # NEW: extract timestamp if available
+    timestamp = quote.get("07. latest trading day")
+
+    # NEW: preserve full raw metadata
+    raw = quote
+
+    # NEW: include provider name
+    return QuoteResult(
+        price=price,
+        pct=pct,
+        provider="alphavantage",
+        timestamp=timestamp,
+        raw=quote,
+        provider_key=key,
+        provider_symbol=symbol
+    )
+
+def fetch_alpha_history(symbol: str, key: str):
+    url = "https://www.alphavantage.co/query"
+    params = {
+        "function": "TIME_SERIES_DAILY",
+        "symbol": symbol,
+        "apikey": key,
+        "outputsize": "compact"
+    }
+
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        data = r.json()
+    except Exception:
+        return []
+
+    # Rate limit or error
+    if "Note" in data or "Information" in data:
+        return []  # gracefully degrade
+
+    series = data.get("Time Series (Daily)")
+    if not series:
+        return []
+
+    closes = []
+    for date in sorted(series.keys()):
+        try:
+            closes.append(float(series[date]["4. close"]))
+        except Exception:
+            continue
+
+    return closes
