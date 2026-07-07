@@ -21,6 +21,16 @@
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 
+from PythonTools.market.trend import (
+    compute_trend_and_slope, 
+    compute_volatility, 
+    compute_trend_strength,
+    detect_reversal,
+    compute_multi_window_trend,
+    sma,
+    ema
+)
+
 @dataclass
 class TrendResult:
     trend: Optional[str] = None          # "up", "down", "flat", "unknown"
@@ -59,9 +69,10 @@ class QuoteResult:
         history=None,
         fallback_chain=None,
         error=None,
-        provider_key=None,        # NEW
-        provider_symbol=None,      # NEW
-        trend_result=None
+        provider_key=None,
+        provider_symbol=None,
+        trend_result=None,
+        trend_data=None
     ):
         self.price = price
         self.pct = pct
@@ -72,10 +83,59 @@ class QuoteResult:
         self.fallback_chain = fallback_chain or []
         self.error = error
 
-        # NEW FIELDS
         self.provider_key = provider_key
         self.provider_symbol = provider_symbol
+
+        # TrendResult dataclass
         self.trend_result = trend_result or TrendResult()
-        
+
+        # Full trend analysis dict
+        self.trend_data = trend_data or {}
+
+    def compute_trend(self):
+        """Compute all trend metrics in one place."""
+        if not self.history or len(self.history) < 2:
+            self.trend_result = TrendResult(
+                trend="unknown",
+                slope=0.0,
+                volatility=0.0,
+                strength=0.0,
+                reversal=False,
+                windows={}
+            )
+            self.trend_data = {}
+            return
+
+        # Use your existing functions
+        trend, slope = compute_trend_and_slope(self.history)
+        vol = compute_volatility(self.history)
+        strength = compute_trend_strength(self.history)
+        reversal = detect_reversal(self.history)
+        windows = compute_multi_window_trend(self.history)
+
+        # Fill TrendResult dataclass
+        self.trend_result = TrendResult(
+            trend=trend,
+            slope=slope,
+            volatility=vol,
+            strength=strength,
+            reversal=reversal,
+            windows=windows
+        )
+
+        # Fill trend_data dict (JSON-friendly)
+        self.trend_data = {
+            "trend": trend,
+            "slope": slope,
+            "volatility": vol,
+            "strength": strength,
+            "reversal": reversal,
+            "sma_5": sma(self.history, 5),
+            "sma_10": sma(self.history, 10),
+            "ema_5": ema(self.history, 5),
+            "ema_10": ema(self.history, 10),
+            "windows": windows
+        }
+
     def is_error(self):
         return self.error is not None
