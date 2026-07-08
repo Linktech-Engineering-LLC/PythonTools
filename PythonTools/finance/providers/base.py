@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-07-07
-Modified: 2026-07-07
+ Modified: 2026-07-07
  File: PythonTools/finance/providers/base.py
  Version: 1.0.0
  Description: Module description here
