@@ -16,3 +16,4 @@ from .mode import Flags, FlagNames, detect_mode
 from .output import nagios_summary
 from .banners import start_banner, end_banner, cert_banner, result_banner
 from .helpers import should_output
+from .parser import BaseNagiosParser
