@@ -12,7 +12,7 @@ Modified: 2026-07-12
 """
 from cryptography.x509.oid import ExtensionOID
 from typing import Optional
-from .status_helpers import TLS_ORDER
+from .models import TLS_ORDER
 # -----------------------------
 #  Status Dispatcher + Perfdata
 # -----------------------------
