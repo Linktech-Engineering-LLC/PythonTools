@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
-Modified: 2026-04-15
+ Modified: 2026-07-13
  File: PythonTools/utils/common.py
  Version: 1.0.0
  Description: Description of this module
