@@ -11,28 +11,24 @@
  Description: Standardized start/end banners for logging.
 """
 
+SAFE_START_KEYS = [
+    "host",
+    "url",
+    "port",
+    "timeout",
+    "https",
+    "max_redirects",
+    "expect_status",
+    "expect_family",
+    "sni",
+    "insecure",
+    "mode",
+]
 
 def start_banner(name: str, meta: dict) -> str:
-    """
-    Operator-grade START banner.
-    Deterministic, grep-friendly, consistent across all tools.
-    """
     parts = [f"[START] {name}"]
 
-    # Only include fields that are meaningful for logging.
-    # Deterministic ordering.
-    keys = [
-        "host",
-        "port",
-        "sni",
-        "timeout",
-        "insecure",
-        "warning_days",
-        "critical_days",
-        "mode",
-    ]
-
-    for key in keys:
+    for key in SAFE_START_KEYS:
         if key in meta:
             parts.append(f"{key}={meta[key]}")
 
@@ -88,6 +84,69 @@ def cert_banner(meta: dict) -> str:
     ]
 
     return "[CERT] " + " ".join(parts)
+def html_banner(meta: dict, result: dict) -> str:
+    """
+    HTML operator-grade banner.
+    Deterministic, grep-friendly, aligned with PythonTools.nagios.
+    Equivalent to cert_banner() in check_cert.
+    """
+
+    cap = result["capture"]
+    backend = result["backend"]
+    ct = result["content_type_check"]
+    html = result["html_check"]
+    status = result["status_check"]
+    perf = meta.get("perfdata", {})
+
+    parts = [
+        f"url={meta.get('url', meta['host'])}",
+
+        # HTTP status
+        f"status={cap['status']}",
+        f"status_ok={status['status'] == 0}",
+        f"latency_ms={cap['response_time'] * 1000 if cap['response_time'] else None}",
+
+        # Content-Type
+        f"content_type={cap['content_type']}",
+        f"content_type_ok={ct['status'] == 0}",
+
+        # HTML checks
+        f"text_present={html['status'] == 0}",
+        f"regex_match={html['status'] == 0}",
+
+        # Backend
+        f"backend={backend['detected']}",
+        f"backend_ok={backend['status'] == 0}",
+
+        # Size
+        f"size={len(cap['body']) if cap['body'] else None}",
+        f"size_ok={ct['status'] == 0}",
+
+        # Redirects
+        f"redirects={cap['redirects']}",
+        f"redirect_ok={status['status'] == 0}",
+
+        # Security
+        f"https_used={not cap['tls_error']}",
+        f"hsts={'strict-transport-security' in (cap['headers'] or {})}",
+
+        # Errors (same pattern as cert_banner)
+        f"errors={sum(1 for section in ['backend','content_type_check','html_check','status_check']
+                      if result[section]['status'] != 0)}",
+    ]
+
+    # Perfdata (flattened)
+    if perf:
+        parts.extend([
+            f"perf_latency={perf.get('latency')}",
+            f"perf_size={perf.get('size')}",
+            f"perf_warn_rt={perf.get('warning_rt')}",
+            f"perf_crit_rt={perf.get('critical_rt')}",
+            f"perf_warn_size={perf.get('warning_size')}",
+            f"perf_crit_size={perf.get('critical_size')}",
+        ])
+
+    return "[HTML] " + " ".join(parts)
 
 def result_banner(state: str, failures: list) -> str:
     """

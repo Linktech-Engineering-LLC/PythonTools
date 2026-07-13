@@ -226,3 +226,19 @@ def classify_exit_code(
     raise RuntimeError(
         f"Host '{host_name}' step '{step}' failed with exit code {exit_code}"
     )
+def normalize_list(values):
+    """
+    Normalize a list of strings (or comma-separated strings) into a
+    clean, lowercase, deduplicated list while preserving order.
+    """
+    if not values:
+        return []
+
+    out = []
+    for item in values:
+        for part in str(item).split(","):
+            name = part.strip().lower()
+            if name:
+                out.append(name)
+
+    return list(dict.fromkeys(out))
