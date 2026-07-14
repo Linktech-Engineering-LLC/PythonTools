@@ -32,5 +32,6 @@ from .trend import (
     compute_trend_and_slope,
     compute_trend_strength,
     compute_volatility,
+    detect_reversal,
 )
 from .yahoo import fetch_yahoo_crypto, fetch_yahoo_stock, fetch_yahoo_stock_history
