@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-07-13
+ Modified: 2026-07-14
  File: PythonTools/nagios/banners.py
  Version: 1.0.0
  Description: Standardized start/end banners for logging.
@@ -93,6 +93,7 @@ def html_banner(meta: dict, result: dict) -> str:
 
     cap = result["capture"]
     backend = result["backend"]
+    backend_check = result["backend_check"]
     ct = result["content_type_check"]
     html = result["html_check"]
     status = result["status_check"]
@@ -116,7 +117,7 @@ def html_banner(meta: dict, result: dict) -> str:
 
         # Backend
         f"backend={backend['detected']}",
-        f"backend_ok={backend['status'] == 0}",
+        f"backend_ok={backend_check['status'] == 0}",
 
         # Size
         f"size={len(cap['body']) if cap['body'] else None}",
@@ -131,7 +132,7 @@ def html_banner(meta: dict, result: dict) -> str:
         f"hsts={'strict-transport-security' in (cap['headers'] or {})}",
 
         # Errors (same pattern as cert_banner)
-        f"errors={sum(1 for section in ['backend','content_type_check','html_check','status_check']
+        f"errors={sum(1 for section in ['backend_check','content_type_check','html_check','status_check']
                       if result[section]['status'] != 0)}",
     ]
 

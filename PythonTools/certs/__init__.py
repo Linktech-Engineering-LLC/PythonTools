@@ -46,9 +46,9 @@ from .fetch_certs import (
 )
 from .models import TLS_ORDER, TLS_VERSIONS, EnforcementResults
 from .orchestrate import (
-    validate_chain,
+    build_certificate_meta,
     validate_host_basic,
-    classify_tls_version,
+    fetch_tls_session_info,
 )
 from .status_helpers import (
     is_aead_cipher,

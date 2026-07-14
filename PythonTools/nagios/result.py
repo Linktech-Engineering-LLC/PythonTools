@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-07-13
- Modified: 2026-07-13
+ Modified: 2026-07-14
  File: PythonTools/nagios/result.py
  Version: 1.0.0
  Description: Helpers that determines Nagios results
@@ -41,6 +41,9 @@ def build_result_object(capture, backend_info, checks, failures):
             "candidates": backend_info["candidates"],
             "confidence": backend_info["confidence"],
             "reason": backend_info["reason"],
+        },
+
+        "backend_check": {
             "status": checks["backend"]["status"],
             "message": checks["backend"]["message"],
         },
