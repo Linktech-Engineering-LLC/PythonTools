@@ -8,8 +8,9 @@
  Modified: 2026-07-13
  File: PythonTools/nagios/__init__.py
  Version: 1.0.0
- Description: Nagios helper exports for PythonTools.
+ Description: Package library for the nagios module
 """
+from PythonTools import __version__
 
 from .states import OK, WARNING, CRITICAL, UNKNOWN, STATE_NAMES
 from .mode import Flags, FlagNames, detect_mode

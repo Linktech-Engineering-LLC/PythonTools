@@ -18,6 +18,7 @@
 from PythonTools.finance.providers.registry import ProviderRegistry
 from PythonTools.market.objects import QuoteResult
 from PythonTools.market.symbols import normalize_commodity, normalize_forex
+
 ALIASES = {
     "XAU": "GOLD",
     "XAG": "SILVER",
