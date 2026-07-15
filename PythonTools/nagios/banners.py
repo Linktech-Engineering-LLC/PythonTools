@@ -23,6 +23,10 @@ SAFE_START_KEYS = [
     "sni",
     "insecure",
     "mode",
+    "status_target",
+    "include_aliases",
+    "exclude_local",
+    "ignore",
 ]
 
 def start_banner(name: str, meta: dict) -> str:
@@ -149,13 +153,37 @@ def html_banner(meta: dict, result: dict) -> str:
 
     return "[HTML] " + " ".join(parts)
 
-def result_banner(state: str, failures: list) -> str:
+def result_banner(state: str, failures: list, perfdata=None) -> str:
     """
     Operator-grade RESULT banner for log files.
     Deterministic and grep-friendly.
     """
-    return (
-        f"[RESULT] state={state}"
-        f" failed={len(failures)}"
-        f" failures={failures}"
-    )
+    base = f"[RESULT] state={state} failures={len(failures)}"
+
+    if perfdata:
+        return f"[PERFDATA] {base} perfdata=\"{perfdata}\""
+
+    return base
+
+def _fmt(value):
+    """Normalize values for logging."""
+    if value is None:
+        return "None"
+    if isinstance(value, (list, tuple)):
+        return ",".join(str(v) for v in value)
+    if isinstance(value, dict):
+        return ",".join(f"{k}:{v}" for k, v in value.items())
+    if isinstance(value, bytes):
+        return value.hex()
+    return str(value)
+
+def log_interface(iface_name, iface_meta, iface_result):
+    parts = [f"[IFACE] {iface_name}"]
+
+    for key, value in sorted(iface_meta.items()):
+        parts.append(f"{key}={_fmt(value)}")
+
+    parts.append(f"ok={iface_result.get('ok')}")
+    parts.append(f"value={_fmt(iface_result.get('value'))}")
+
+    return " ".join(parts)

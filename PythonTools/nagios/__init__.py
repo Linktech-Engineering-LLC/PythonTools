@@ -26,6 +26,7 @@ from .banners import (
     cert_banner, 
     html_banner,
     result_banner,
+    log_interface,
 )
 from .helpers import should_output
 from .parser import BaseNagiosParser
