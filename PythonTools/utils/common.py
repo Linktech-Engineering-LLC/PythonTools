@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-07-13
+ Modified: 2026-07-16
  File: PythonTools/utils/common.py
  Version: 1.0.0
  Description: Description of this module
@@ -16,6 +16,7 @@
 
 import sys
 import os
+import re
 import json
 import yaml
 import tomllib
@@ -30,7 +31,6 @@ from typing import Dict, Any, Optional
 def current_timestamp() -> str:
     """Return a timezone-aware timestamp in ISO format."""
     return datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S %Z%z")
-
 def json_output(data, force_color=False):
     is_tty = sys.stdout.isatty()
 
@@ -51,11 +51,9 @@ def json_output(data, force_color=False):
             return text
 
     return text
-
 # ------------------------------------------------------------
 # Generic size parser
 # ------------------------------------------------------------
-
 def parse_size(size_str: str) -> int:
     """
     Convert strings like '10KB', '5MB', '2GB' into integer byte counts.
@@ -68,50 +66,35 @@ def parse_size(size_str: str) -> int:
     if size_str.endswith("GB"):
         return int(size_str[:-2]) * 1024 * 1024 * 1024
     return int(size_str)
-
-
 # ------------------------------------------------------------
 # Generic TOML reader
 # ------------------------------------------------------------
-
 def read_toml(path: str | Path) -> dict:
     """Load a TOML file and return its contents as a dict."""
     with open(Path(path), "rb") as f:
         return tomllib.load(f)
-
-
 # ------------------------------------------------------------
 # Generic YAML / JSON loaders
 # ------------------------------------------------------------
-
 def load_yaml(path: str | Path) -> dict:
     with open(Path(path), "r") as f:
         return yaml.safe_load(f)
-
-
 def load_json(path: str | Path) -> dict:
     with open(Path(path), "r") as f:
         return json.load(f)
-
-
 # ------------------------------------------------------------
 # Generic path resolver
 # ------------------------------------------------------------
-
 def resolve_path(path: str | Path) -> Path:
     """Expand ~ and return an absolute resolved Path."""
     return Path(path).expanduser().resolve()
-
 def normalize_path(p: Optional[str]) -> Optional[str]:
     if not p:
         return None
     return str(Path(os.path.expandvars(os.path.expanduser(p))))
-
-
 # ------------------------------------------------------------
 # String <-> dictionary helpers
 # ------------------------------------------------------------
-
 def string_to_dictionary(value: str) -> dict:
     """
     Parse a config string like:
@@ -171,22 +154,39 @@ def string_to_dictionary(value: str) -> dict:
         d[keys[-1]] = val
 
     return result
-
-
 def dict_to_string(d: dict) -> str:
     """Convert a dictionary into a simple key=value,key2=value2 string."""
     return ",".join(f"{k}={v}" for k, v in d.items())
+def matches_ignore(name, patterns) -> bool:
+    if not patterns:
+        return False
 
+    lname = name.lower()
 
+    for p in patterns:
+        p = p.strip()
+        if not p:
+            continue
+
+        # 1. Substring match (default behavior)
+        if p.lower() in lname:
+            return True
+
+        # 2. Regex match (if pattern looks like a regex)
+        try:
+            if re.search(p, name, re.IGNORECASE):
+                return True
+        except re.error:
+            # Invalid regex → ignore and fall back to substring only
+            pass
+
+    return False
 # ------------------------------------------------------------
 # Boolean coercion
 # ------------------------------------------------------------
-
 def coerce_bool(val: str) -> bool:
     """Convert common truthy strings into a boolean."""
     return str(val).lower() in ("1", "true", "yes", "on")
-
-
 def classify_exit_code(
     step: str,
     exit_code: int,

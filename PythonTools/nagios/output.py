@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-07-13
+ Modified: 2026-07-16
  File: PythonTools/nagios/output.py
  Version: 1.0.0
  Description: Nagios output formatting helpers.
@@ -31,7 +31,6 @@ def nagios_summary(state: int, message: str, extra: dict | None = None) -> str:
             base += " " + " ".join(parts)
 
     return base
-
 def early_exit(meta, logger, message, code):
     """
     Unified early-exit handler for all NMS_Tools.
