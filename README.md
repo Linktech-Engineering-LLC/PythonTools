@@ -16,6 +16,8 @@ PythonTools is designed so that adding new functionality **cannot negatively aff
 ![RunUpdates License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![RunUpdates Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Linktech Engineering Tools Suite](https://img.shields.io/badge/Linktech_Engineering-Tools_Suite-blueviolet.svg)
+[![RunUpdates Dashboard](https://img.shields.io/badge/RunUpdates-Dashboard-blue)](https://linktech-engineering-llc.github.io/RunUpdates/)
+[![RunUpdates Stable](https://img.shields.io/badge/RunUpdates-Stable-green)](https://linktech-engineering-llc.github.io/RunUpdates/stable/)
 
 PythonTools provides foundational components used by  
 **RunUpdates** → https://github.com/Linktech-Engineering-LLC/RunUpdates
@@ -27,6 +29,8 @@ PythonTools provides foundational components used by
 ![NMS_Tools License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![NMS_Tools Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Linktech Engineering Tools Suite](https://img.shields.io/badge/Linktech_Engineering-Tools_Suite-blueviolet.svg)
+[![NMS_Tools Dashboard](https://img.shields.io/badge/NMS_Tools-Dashboard-green)](https://linktech-engineering-llc.github.io/NMS_Tools/)
+[![NMS_Tools Stable](https://img.shields.io/badge/NMS_Tools-Stable-green)](https://linktech-engineering-llc.github.io/NMS_Tools/stable/)
 
 PythonTools provides foundational components used by  
 **NMS_Tools** → https://github.com/Linktech-Engineering-LLC/NMS_Tools
