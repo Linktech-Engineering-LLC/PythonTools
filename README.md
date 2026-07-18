@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Linktech Engineering Tools Suite](https://img.shields.io/badge/Linktech_Engineering-Tools_Suite-blueviolet.svg)
 
-PythonTools is a deterministic, cross‑project utility library providing stable primitives for execution, logging, path resolution, schema loading, and exception modeling. It is the foundational support library used across the **Linktech Engineering Tools Suite**, including RunUpdates, VSCode‑Updater, NMS_Tools, TimerDeck, and other operator‑grade automation projects.
+PythonTools is a deterministic, cross‑project utility library providing stable primitives for execution, logging, path resolution, schema loading, and exception modeling. It is the foundational support library used across the **Linktech Engineering Tools Suite**, including RunUpdates, VSCode‑Updater, NMS_Tools, TimerDeck, BotScanner and other operator‑grade automation projects.
 
 PythonTools is designed so that adding new functionality **cannot negatively affect other projects** importing it. Modules are isolated, deterministic, and safe for reuse across multiple applications.
 ---
@@ -19,6 +19,27 @@ PythonTools is designed so that adding new functionality **cannot negatively aff
 
 PythonTools provides foundational components used by  
 **RunUpdates** → https://github.com/Linktech-Engineering-LLC/RunUpdates
+
+## Related Project: NMS_Tools
+
+![NMS_Tools](https://img.shields.io/badge/NMS_Tools-Uses_PythonTools-blueviolet.svg)
+![NMS_Tools Status](https://img.shields.io/badge/NMS_Tools-Active-green.svg)
+![NMS_Tools License](https://img.shields.io/badge/license-MIT-blue.svg)
+![NMS_Tools Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![Linktech Engineering Tools Suite](https://img.shields.io/badge/Linktech_Engineering-Tools_Suite-blueviolet.svg)
+
+PythonTools provides foundational components used by  
+**NMS_Tools** → https://github.com/Linktech-Engineering-LLC/NMS_Tools
+
+NMS_Tools relies on PythonTools for:
+
+- deterministic subprocess execution  
+- unified logging and redaction  
+- schema loading and validation  
+- market/finance provider architecture  
+- ticker normalization and trend analysis  
+- weather and network data ingestion  
+- frozen‑bundle compatibility for distribution  
 
 ---
 
@@ -82,11 +103,24 @@ Each module follows the same design guarantees:
 * safe cross‑project import
 * consistent exception and logging models
 
-This structure ensures PythonTools remains predictable and maintainable across all Linktech Engineering projects.
+---
+
+## 🧩 Project Ecosystem
+
+PythonTools is the shared foundation for the Linktech Engineering Tools Suite:
+
+* **RunUpdates** — update orchestration and system maintenance
+* **NMS_Tools** — network management, market data, weather ingestion, and system checks
+* **TimerDeck** — systemd automation and scheduling
+* **VSCode-Updater** — editor update automation
+* **BotScanner** — security analysis and behavioral scanning
+
+This ecosystem relies on PythonTools for deterministic execution, logging, schema validation, and cross‑project stability.
 
 ---
 
 ### 🧩 Module Relationships Diagram
+
 PythonTools modules form a layered architecture.
 Lower‑level modules provide primitives; higher‑level modules compose them into domain‑specific functionality.
 
@@ -171,13 +205,12 @@ Lower‑level modules provide primitives; higher‑level modules compose them in
 
 PythonTools is the foundational library used across:
 
-* **RunUpdates** (update orchestration)
-* **NMS_Tools** (network management suite)
-* **TimerDeck** (systemd automation)
-* **BotScanner** (security tooling)
+* **RunUpdates** — update orchestration and system maintenance  
+* **NMS_Tools** — network management suite (tickers, weather, system checks, market providers)  
+* **TimerDeck** — systemd automation and scheduling  
+* **BotScanner** — security tooling and behavioral analysis  
+* **VSCode-Updater** — editor update automation  
 * Additional internal Linktech Engineering tools
-
-This shared foundation ensures consistent behavior across the entire suite.
 
 ---
 
@@ -211,8 +244,6 @@ PythonTools follows a stability model:
 * New modules may be added
 * Breaking changes require a version bump
 * Behavior is deterministic across all supported environments
-
-This ensures long‑term reliability for dependent projects.
 
 ---
 

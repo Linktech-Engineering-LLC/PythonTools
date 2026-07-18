@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-07-14
+ Modified: 2026-07-18
  File: PythonTools/market/router.py
  Version: 1.0.0
  Description:
@@ -15,9 +15,9 @@
             results into QuoteResult objects, and prepares data for trend and history
             analysis. This module acts as the unified entry point for all market queries.
 """
-from PythonTools.finance.providers.registry import ProviderRegistry
-from PythonTools.market.objects import QuoteResult
-from PythonTools.market.symbols import normalize_commodity, normalize_forex
+from ..finance.providers.registry import ProviderRegistry
+from . import QuoteResult
+from .symbols import normalize_commodity, normalize_forex
 
 ALIASES = {
     "XAU": "GOLD",
@@ -83,18 +83,24 @@ class MarketObjectEngine:
 
     def get_quote(self, symbol: str, prefer_history: bool = False) -> QuoteResult:
         asset_type = detect_type(symbol)
-
         providers = ProviderRegistry.providers
 
-        # Sort by priority first
-        providers = sorted(providers, key=lambda p: p.priority)
+        providers = sorted(
+            providers,
+            key=lambda p: (
+                # 1. History-capable providers first
+                not (prefer_history and p.prefers_history),
 
-        # If history is preferred, move history-capable providers to the front
-        if prefer_history:
-            providers = sorted(
-                providers,
-                key=lambda p: (not p.prefers_history, p.priority)
+                # 2. Exclusive crypto providers next
+                not (asset_type == "crypto" and len(p.asset_types) == 1 and "crypto" in p.asset_types),
+
+                # 3. Priority last
+                p.priority
             )
+        )
+
+        # --- 4. Try providers in order, track fallback errors ---
+        errors = []
 
         for provider in providers:
             if asset_type not in provider.asset_types:
@@ -104,8 +110,12 @@ class MarketObjectEngine:
             result = provider.fetch(symbol, key)
 
             if not result.is_error():
+                # Post-processing
                 result.history = extract_history(result)
                 result.compute_trend()
                 return result
 
-        return QuoteResult(0, 0, error=f"No provider succeeded for {symbol}")
+            errors.append(f"{provider.name}: {result.error}")
+
+        # --- 5. Final fallback error ---
+        return QuoteResult(0, 0, error="; ".join(errors))

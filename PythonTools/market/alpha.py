@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-06-17
+ Modified: 2026-07-18
  File: PythonTools/market/alpha.py
  Version: 1.0.0
  Description:
@@ -20,7 +20,7 @@
 
 import requests
 
-from PythonTools.market.objects import QuoteResult
+from ..market.objects import QuoteResult
 
 ALPHA_URL = "https://www.alphavantage.co/query"
 

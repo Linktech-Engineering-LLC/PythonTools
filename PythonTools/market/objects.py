@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-07-07
+ Modified: 2026-07-18
  File: PythonTools/market/objects.py
  Version: 1.0.0
  Description:
@@ -21,7 +21,7 @@
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 
-from PythonTools.market.trend import (
+from .trend import (
     compute_trend_and_slope, 
     compute_volatility, 
     compute_trend_strength,

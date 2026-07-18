@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-06-17
+ Modified: 2026-07-18
  File: PythonTools/market/coingecko.py
  Version: 1.0.0
  Description:
@@ -18,24 +18,13 @@
 """
 
 import requests
-from PythonTools.market.objects import QuoteResult
-
-COINGECKO_MAP = {
-    "BTC": "bitcoin",
-    "ETH": "ethereum",
-    "DOGE": "dogecoin",
-    "LTC": "litecoin",
-    "XRP": "ripple",
-    "ADA": "cardano",
-    "SOL": "solana",
-    "DOT": "polkadot",
-}
-
+from .objects import QuoteResult
+from .symbols import CRYPTO_MAP
 
 def fetch_coingecko_crypto(symbol: str, key: str) -> QuoteResult:
-    cg_id = COINGECKO_MAP.get(symbol.upper())
+    cg_id = CRYPTO_MAP.get(symbol.upper(),{}).get("coingecko")
     if not cg_id:
-        return QuoteResult(0, 0, error="CoinGecko: unknown symbol")
+        return QuoteResult(0, 0, error=f"CoinGecko: unknown symbol: {symbol}")
 
     url = (
         f"https://api.coingecko.com/api/v3/coins/{cg_id}"

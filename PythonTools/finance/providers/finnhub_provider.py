@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-07-07
- Modified: 2026-07-07
+ Modified: 2026-07-18
  File: PythonTools/finance/providers/finnhub_provider.py
  Version: 1.0.0
  Description: Module description here
@@ -13,26 +13,37 @@ Created: 2026-07-07
 from .base import BaseProvider
 from .registry import ProviderRegistry
 
-from PythonTools.market.finnhub import fetch_finnhub_crypto
-from PythonTools.market.objects import QuoteResult
-from PythonTools.market.symbols import normalize_crypto, normalize_commodity
+from ...market.finnhub import fetch_finnhub_crypto, fetch_finnhub_commodity, fetch_finnhub_stock
+from ...market.objects import QuoteResult
+from ...market.symbols import CRYPTO_MAP, COMMODITY_MAP
 
 @ProviderRegistry.register
 class FinnhubProvider(BaseProvider):
     name = "finnhub"
     requires_key = False
     accepts_key = True
-    priority = 30
-    asset_types = {"crypto"}
+    priority = 40
+    asset_types = {"crypto", "commodity", "stock"}
     prefers_history = True
     capabilities = {"history", "candles"}
 
     def fetch(self, symbol: str, key: str):
-        # Provider-specific normalization
-        symbol = normalize_crypto(symbol, "finnhub")
-        symbol = normalize_commodity(symbol, "finnhub")
+        symbol = symbol.upper()
 
-        raw = fetch_finnhub_crypto(symbol, key)
+        # Crypto
+        if symbol in CRYPTO_MAP:
+            fn_id = CRYPTO_MAP[symbol]["finnhub"]
+            raw = fetch_finnhub_crypto(fn_id, key)
+
+        # Commodity
+        elif symbol in COMMODITY_MAP:
+            fn_id = COMMODITY_MAP[symbol]["finnhub"]
+            raw = fetch_finnhub_commodity(fn_id, key)
+
+        # Stock
+        else:
+            fn_id = symbol  # Finnhub stock symbols are usually identical
+            raw = fetch_finnhub_stock(fn_id, key)
 
         # Error from fetcher
         if "error" in raw:
@@ -42,7 +53,7 @@ class FinnhubProvider(BaseProvider):
                 provider="finnhub",
                 error=raw["error"],
                 provider_key=key,
-                provider_symbol=symbol
+                provider_symbol=fn_id
             )
 
         closes = raw.get("c", [])
@@ -57,6 +68,5 @@ class FinnhubProvider(BaseProvider):
             raw=raw,
             history=closes,
             provider_key=key,
-            provider_symbol=symbol
+            provider_symbol=fn_id
         )
-

@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-06-17
+ Modified: 2026-07-18
  File: PythonTools/market/yahoo.py
  Version: 1.0.0
  Description:
@@ -18,7 +18,7 @@
 """
 
 from yahooquery import Ticker
-from PythonTools.market.objects import QuoteResult
+from ..market.objects import QuoteResult
 
 def fetch_yahoo_crypto(symbol: str) -> QuoteResult:
     yf_symbol = f"{symbol.upper()}-USD"

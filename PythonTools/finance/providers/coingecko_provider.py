@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-07-07
- Modified: 2026-07-07
+ Modified: 2026-07-18
  File: PythonTools/finance/providers/coingecko_provider.py
  Version: 1.0.0
  Description: Module description here
@@ -15,8 +15,8 @@ Created: 2026-07-07
 from .base import BaseProvider
 from .registry import ProviderRegistry
 
-from PythonTools.market.coingecko import fetch_coingecko_crypto
-from PythonTools.market.symbols import normalize_crypto
+from ...market.coingecko import fetch_coingecko_crypto
+from ...market.symbols import normalize_crypto
 
 
 @ProviderRegistry.register
@@ -30,5 +30,4 @@ class CoinGeckoProvider(BaseProvider):
     capabilities = {"history", "trend", "sparkline"}
     
     def fetch(self, symbol: str, key: str):
-        symbol = normalize_crypto(symbol, "coingecko")
-        return fetch_coingecko_crypto(symbol, key)
+        return fetch_coingecko_crypto(symbol.upper(), key)
