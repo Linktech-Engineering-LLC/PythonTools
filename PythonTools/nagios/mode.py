@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-06-17
+ Modified: 2026-07-19
  File: PythonTools/nagios/mode.py
  Version: 1.0.0
  Description: Flag engine and mode detection for Nagios-compatible tools.
