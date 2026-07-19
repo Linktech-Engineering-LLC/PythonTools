@@ -14,7 +14,6 @@
 """
 
 import platform
-import sys
 from typing import Dict
 
 

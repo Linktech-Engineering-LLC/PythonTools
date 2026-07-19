@@ -19,7 +19,11 @@ from typing import Optional
 from PythonTools.nagios.mode import Flags, FlagNames, detect_mode
 from PythonTools.nagios.states import UNKNOWN
 from PythonTools.nagios.runtime import format_runtime_info
-
+# -----------------------------------------------------------
+# Handle Arugment Errors
+# -----------------------------------------------------------
+class CheckArgError():
+    pass
 # ------------------------------------------------------------
 # Custom Formatter (same behavior as check_ports)
 # ------------------------------------------------------------
@@ -38,8 +42,6 @@ class CustomFormatter(
         if action.default in (None, False):
             return help_text
         return f"{help_text} (default: {action.default})"
-
-
 # ------------------------------------------------------------
 # Error-handling ArgumentParser
 # ------------------------------------------------------------

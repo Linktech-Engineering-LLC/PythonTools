@@ -13,12 +13,14 @@
 
 from enum import IntEnum, auto
 
-
 class FlagNames(IntEnum):
     VERBOSE = auto()
     JSON = auto()
     QUIET = auto()
 
+    REQUIRE_ALL = auto()
+    REQUIRE_ANY = auto()
+    FAIL_ONLY = auto()
 
 MODE_MAP = {
     FlagNames.JSON:    "json",
@@ -26,15 +28,14 @@ MODE_MAP = {
     FlagNames.QUIET:   "quiet",
 }
 
-
 class Flags:
-    """
-    Deterministic bitmask flag engine used by all NMS_Tools checks.
-    """
 
     def __init__(self):
         self._mask = 0
 
+    # -----------------------------
+    # Core bit operations
+    # -----------------------------
     def set(self, flag: FlagNames, value: bool = True):
         if value:
             self._mask |= (1 << flag.value)
@@ -44,18 +45,45 @@ class Flags:
     def get(self, flag: FlagNames) -> bool:
         return bool(self._mask & (1 << flag.value))
 
+    # -----------------------------
+    # Convenience accessors
+    # -----------------------------
     def __getitem__(self, flag: FlagNames) -> bool:
         return self.get(flag)
 
     def __setitem__(self, flag: FlagNames, value: bool):
         self.set(flag, value)
 
+    # -----------------------------
+    # Introspection
+    # -----------------------------
+    def active_names(self):
+        return [
+            name.name
+            for name in FlagNames
+            if self.get(name)
+        ]
+
+    def to_hex(self):
+        return f"0x{self._mask:08X}"
+
+    # -----------------------------
+    # Build from argparse args
+    # -----------------------------
     @classmethod
     def from_args(cls, args):
         f = cls()
+
+        # Output modes
         f[FlagNames.VERBOSE] = args.verbose
-        f[FlagNames.JSON]    = args.json
-        f[FlagNames.QUIET]   = args.quiet
+        f[FlagNames.JSON] = args.json
+        f[FlagNames.QUIET] = args.quiet
+
+        # Filter flags
+        f[FlagNames.REQUIRE_ALL] = args.require_all
+        f[FlagNames.REQUIRE_ANY] = args.require_any
+        f[FlagNames.FAIL_ONLY ] = args.fail_only
+
         return f
 
 
