@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-07-16
+ Modified: 2026-08-03
  File: PythonTools/utils/common.py
  Version: 1.0.0
  Description: Description of this module
@@ -21,16 +21,8 @@ import json
 import yaml
 import tomllib
 from pathlib import Path
-from datetime import datetime
 from typing import Dict, Any, Optional
 
-# ------------------------------------------------------------
-# Generic timestamp helper
-# ------------------------------------------------------------
-
-def current_timestamp() -> str:
-    """Return a timezone-aware timestamp in ISO format."""
-    return datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S %Z%z")
 def json_output(data, force_color=False):
     is_tty = sys.stdout.isatty()
 
