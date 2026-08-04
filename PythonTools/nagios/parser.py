@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-07-19
+ Modified: 2026-08-04
  File: PythonTools/nagios/parser.py
  Version: 1.0.0
  Description: Base parser for Nagios-compatible NMS_Tools checks.
@@ -13,7 +13,7 @@
 
 import argparse
 import platform
-import sys
+import os
 from typing import Optional
 
 from PythonTools.nagios.mode import Flags, FlagNames, detect_mode
@@ -22,7 +22,8 @@ from PythonTools.nagios.runtime import format_runtime_info
 # -----------------------------------------------------------
 # Handle Arugment Errors
 # -----------------------------------------------------------
-class CheckArgError():
+class CheckArgError(Exception):
+    """Raised when CLI argument parsing fails."""
     pass
 # ------------------------------------------------------------
 # Custom Formatter (same behavior as check_ports)
@@ -56,7 +57,7 @@ class CheckArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         print(f"ERROR: {message}\n")
         self.print_help()
-        sys.exit(UNKNOWN)
+        os._exit(UNKNOWN)
 
 
 # ------------------------------------------------------------
