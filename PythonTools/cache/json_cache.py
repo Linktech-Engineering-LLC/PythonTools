@@ -22,6 +22,24 @@ def cache_path(base: Path, key: str) -> Path:
     digest = hashlib.sha256(key.encode()).hexdigest()
     return base / f"{digest}.json"
 
+def _deserialize(obj):
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            if k in ("sunrise", "sunset") and isinstance(v, str):
+                try:
+                    out[k] = datetime.fromisoformat(v)
+                except:
+                    out[k] = v
+            else:
+                out[k] = _deserialize(v)
+        return out
+
+    if isinstance(obj, list):
+        return [_deserialize(v) for v in obj]
+
+    return obj
+
 def load_json_cache(path: Path, ttl: timedelta):
     if not path.exists():
         return None, None
@@ -35,15 +53,30 @@ def load_json_cache(path: Path, ttl: timedelta):
         if is_expired(ts, ttl):
             return None, None
 
-        return cached["data"], ts
+        return _deserialize(cached["data"]), ts
 
     except Exception:
         return None, None
 
+def serialize_for_json(obj):
+    from datetime import datetime
+
+    if isinstance(obj, datetime):
+        return obj.strftime("%Y-%m-%dT%H:%M")
+
+    if isinstance(obj, dict):
+        return {k: serialize_for_json(v) for k, v in obj.items()}
+
+    if isinstance(obj, list):
+        return [serialize_for_json(v) for v in obj]
+
+    return obj
+
+
 def save_json_cache(path: Path, data: dict):
     payload = {
         "timestamp": datetime.now().isoformat(),
-        "data": data
+        "data": serialize_for_json(data)
     }
     with open(path, "w") as f:
         json.dump(payload, f)

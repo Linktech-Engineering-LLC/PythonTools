@@ -18,6 +18,7 @@ from .json_cache import (
     cache_path,
     load_json_cache,
     save_json_cache,
+    serialize_for_json,
 )
 from .ttl import is_expired
 
@@ -28,5 +29,6 @@ __all__ = [
     "is_expired",
     "load_json_cache",
     "save_json_cache",
+    "serialize_for_json",
 ]
 
