@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-03
- Modified: 2026-08-03
+ Modified: 2026-08-09
  File: PythonTools/location/normalize.py
  Version: 1.0.0
  Description: Module description here
@@ -44,3 +44,17 @@ def normalize_city_name(city: str) -> str:
     if city.lower().startswith("st. "):
         return "Saint " + city[4:].strip()
     return city
+
+def format_resolved_name(loc):
+    city = loc.get("city")
+    state = loc.get("state")
+    country = loc.get("country")
+    zip_code = loc.get("zip")
+
+    if city and state and zip_code:
+        return f"{city}, {state} {zip_code}, {country}"
+    if city and state:
+        return f"{city}, {state}, {country}"
+    if city:
+        return f"{city}, {country}"
+    return f"{loc['latitude']},{loc['longitude']}"

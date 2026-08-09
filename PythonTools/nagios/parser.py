@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-08-04
+ Modified: 2026-08-09
  File: PythonTools/nagios/parser.py
  Version: 1.0.0
  Description: Base parser for Nagios-compatible NMS_Tools checks.
@@ -63,7 +63,7 @@ class CheckArgumentParser(argparse.ArgumentParser):
 # ------------------------------------------------------------
 # Base Parser for all NMS_Tools checks
 # ------------------------------------------------------------
-class BaseNagiosParser:
+class BaseNagiosParser():
     """
     Provides:
     - shared output flags (verbose/json/quiet)
