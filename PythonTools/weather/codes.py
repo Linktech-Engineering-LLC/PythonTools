@@ -303,3 +303,16 @@ def normalize_nws_text(text: str | None) -> str:
     # Title-case to match WEATHER_CODES contexts
     return t.title()
 
+def map_context(code: int | None) -> str:
+    """Return human-readable context for a WMO weather code."""
+    if code is None or code not in WEATHER_CODES:
+        return "Unknown"
+    return WEATHER_CODES[code]["canonical"]
+
+
+def map_icon(code: int | None, is_day: bool) -> str:
+    """Return the correct icon filename for a WMO weather code."""
+    if code is None or code not in WEATHER_CODES:
+        return "wi-na.svg"
+    key = "day_icon" if is_day else "night_icon"
+    return WEATHER_CODES[code][key]

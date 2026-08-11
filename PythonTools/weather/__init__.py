@@ -11,30 +11,28 @@ Created: 2026-08-09
  Description: Module description here
 """
 
-from .builders import build_nws_url, build_open_meteo_url
-from .codes import WEATHER_CODES
+from .codes import WEATHER_CODES, map_context, map_icon
 from .formatters import fmt_clouds, fmt_precip, fmt_temp, fmt_wind
+from .indexes import (
+    compute_all_indexes,
+    compute_heat_index,
+    compute_humidex,
+    compute_wet_bulb,
+    compute_wind_chill,
+    WeatherIndexes,
+    compute_indexes_from_fields,
+)
 from .normalize import convert_units_mode_aware
-from .providers import WEATHER_PROVIDERS
-from .provider_open_meteo import fetch_weekly_open_meteo, fetch_hourly_open_meteo, fetch_current_open_meteo
-from .provider_nws import fetch_hourly_nws, fetch_current_nws, fetch_weekly_nws, resolve_nws_meta
-from .register import register_providers
+from .registry import WEATHER_PROVIDERS
 
 __all__ = [
     "WEATHER_PROVIDERS",
-    "build_nws_url",
-    "build_open_meteo_url",
-    "fetch_weekly_open_meteo",
-    "fetch_hourly_open_meteo",
-    "fetch_current_open_meteo",
-    "fetch_hourly_nws",
-    "fetch_current_nws",
-    "fetch_weekly_nws",
-    "resolve_nws_meta",
     "convert_units_mode_aware",
-    "register_providers",
     "fmt_clouds",
     "fmt_wind",
     "fmt_precip",
     "fmt_temp",
+    "compute_indexes_from_fields",
+    "map_context",
+    "map_icon",
 ]

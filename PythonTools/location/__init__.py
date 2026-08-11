@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-03
- Modified: 2026-08-09
+ Modified: 2026-08-11
  File: PythonTools/location/__init__.py
  Version: 1.0.0
  Description: 
@@ -34,9 +34,17 @@ Public API:
 
 from .us_states import US_STATES, STATE_NAME_TO_CODE
 from .countries import COUNTRIES, COUNTRY_NAME_TO_CODE
-from .normalize import normalize_state, normalize_country, normalize_zip, normalize_city_name, format_resolved_name
+from .normalize import (
+    normalize_state, 
+    normalize_country, 
+    normalize_zip, 
+    normalize_city_name, 
+    format_resolved_name,
+    normalize_city
+)
 from .geo_types import GeoPoint, LocationInfo
-from .providers import PROVIDERS
+from .providers import LOCATION_PROVIDERS, ProviderError, build_location_url
+from .resolve import resolve_location, LocationInfo, LocationNotFoundError
 from .validate import validate_location_input
 
 __all__ = [
@@ -44,13 +52,17 @@ __all__ = [
     "STATE_NAME_TO_CODE",
     "COUNTRIES",
     "COUNTRY_NAME_TO_CODE",
+    "normalize_city",
     "normalize_state",
     "normalize_country",
     "normalize_zip",
     "GeoPoint",
     "LocationInfo",
-    "PROVIDERS",
+    "LOCATION_PROVIDERS",
     "normalize_city_name",
     "validate_location_input",
     "format_resolved_name",
+    "resolve_location",
+    "LocationNotFoundError",
+    "ProviderError",
 ]

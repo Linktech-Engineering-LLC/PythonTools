@@ -4,19 +4,20 @@
  Package: PythonTools
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
-Created: 2026-08-09
- Modified: 2026-08-09
- File: PythonTools/weather/provider_open_meteo.py
+Created: 2026-08-10
+Modified: 2026-08-10
+ File: PythonTools/weather/providers/open_meteo.py
  Version: 1.0.0
- Description: Weather Provider Open-Meteo fetch methods
+ Description: Module description here
 """
 
 import json
 import urllib
 
 from .builders import build_open_meteo_url
-from ..datetime import parse_iso
-from .providers import WEATHER_PROVIDERS
+from ..indexes import compute_indexes_from_fields
+from ...datetime import parse_iso
+from ..registry import WEATHER_PROVIDERS
 
 def fetch_hourly_open_meteo(lat, lon, timeout, meta):
     url = build_open_meteo_url(lat, lon, "hourly")
@@ -38,6 +39,15 @@ def fetch_hourly_open_meteo(lat, lon, timeout, meta):
             "sunrise": sunrise,
             "sunset": sunset,
         }
+
+        entry["indexes"] = compute_indexes_from_fields(
+            temp_c = hourly["temperature_2m"][i],
+            dewpoint_c = hourly["dewpoint_2m"][i],
+            rh = hourly["relativehumidity_2m"][i],
+            wind_kph = hourly["windspeed_10m"][i],
+        )
+
+
         result.append(entry)
 
     return {"hours": result}, url
@@ -69,7 +79,6 @@ def fetch_current_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
         if not arr or idx >= len(arr):
             return default
         return arr[idx]
-
     # RAW result — no normalization, no icons, no context
     result = {
         "time": current_time,
@@ -88,7 +97,12 @@ def fetch_current_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
         "pressure_msl": h("pressure_msl"),
         "precipitation_probability": h("precipitation_probability"),
     }
-
+    result["index"] = compute_indexes_from_fields(
+        temp_c=result["temperature_c"],
+        wind_kph=result["wind_kph"],
+        dewpoint_c=result["dewpoint_c"],
+        rh=result["humidity"],
+    )
     return result, url
 
 def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
@@ -108,7 +122,6 @@ def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
             if not arr or i >= len(arr):
                 return default
             return arr[i]
-
         days.append({
             "date": d,
             "sunrise": h("sunrise"),
@@ -119,16 +132,15 @@ def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
             "precip_mm": h("precipitation_sum"),
             "precipitation_probability_max": h("precipitation_probability_max"),
             "wind_kph_max": h("windspeed_10m_max"),
+            "index": compute_indexes_from_fields(
+                temp_c=h("temperature_2m_max"),
+                dewpoint_c=None,
+                rh=None,
+                wind_kph= h("windspeed_10m_max")
+            )
         })
 
     # RAW weekly result — no normalization, no icons, no context
     return {"days": days}, url
 def fetch_full_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
     pass
-def define_open_meteo_providers():
-    WEATHER_PROVIDERS["open-meteo"].update({
-        "fetch_current": fetch_current_open_meteo,
-        "fetch_hourly": fetch_hourly_open_meteo,
-        "fetch_weekly": fetch_weekly_open_meteo,
-        "fetch_full": fetch_full_open_meteo,
-    })

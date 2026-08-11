@@ -4,9 +4,9 @@
  Package: PythonTools
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
-Created: 2026-08-09
- Modified: 2026-08-09
- File: PythonTools/weather/builders.py
+Created: 2026-08-10
+Modified: 2026-08-10
+ File: PythonTools/weather/providers/builders.py
  Version: 1.0.0
  Description: Module description here
 """
@@ -14,7 +14,7 @@ Created: 2026-08-09
 import requests
 import urllib
 
-from .providers import WEATHER_PROVIDERS
+from ..registry import WEATHER_PROVIDERS
 
 def build_nws_url(lat: float, lon: float, mode: str) -> str:
     base = WEATHER_PROVIDERS["nws"]["base"]
@@ -26,12 +26,14 @@ def build_nws_url(lat: float, lon: float, mode: str) -> str:
 
     match mode:
         case "current" | "hourly":
-            # Hourly forecast (used for both current + hourly)
             return props["forecastHourly"]
 
         case "weekly":
-            # Daily forecast (7-day periods)
             return props["forecast"]
+
+        case "observation":
+            # Return the station list URL
+            return props["observationStations"]
 
         case _:
             raise ValueError(f"Unsupported mode for NWS: {mode}")
@@ -105,4 +107,3 @@ def build_open_meteo_url(lat: float, lon: float, mode: str) -> str:
             raise ValueError(f"Unsupported mode for Open-Meteo: {mode}")
 
     return f"{base}?{urllib.parse.urlencode(params)}"
-

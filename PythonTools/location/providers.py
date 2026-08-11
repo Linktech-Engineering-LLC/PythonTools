@@ -5,24 +5,39 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-03
- Modified: 2026-08-03
+ Modified: 2026-08-11
  File: PythonTools/location/providers.py
  Version: 1.0.0
  Description: Module description here
 """
 
-PROVIDERS = {
+class ProviderError(Exception):
+    pass
+
+LOCATION_PROVIDERS = {
     "zippopotam.us": {
-        "type": "geolocation",
-        "url": "https://api.zippopotam.us",
+        "base": "https://api.zippopotam.us",
+        "endpoints": {
+            "zip": "{base}/{country}/{zip}",
+            "city": "{base}/{country}/{city}",
+        }
     },
-    "open-meteo": {
-        "type": "weather",
-        "url": "https://api.open-meteo.com/v1/forecast",
-    },
-    "nws": {
-        "type": "weather",
-        "url": "https://api.weather.gov",
+
+    "open-meteo-geocode": {
+        "base": "https://geocoding-api.open-meteo.com/v1/search",
+        "endpoints": {
+            "global": "{base}?name={city}",
+            "country": "{base}?name={city}&country={country}",
+        }
     }
-    # Add more providers here
 }
+def build_location_url(provider: str, endpoint: str, **kwargs) -> str:
+    info = LOCATION_PROVIDERS.get(provider)
+    if not info:
+        raise ProviderError(f"Unknown location provider: {provider}")
+
+    ep = info["endpoints"].get(endpoint)
+    if not ep:
+        raise ProviderError(f"Unknown endpoint '{endpoint}' for provider '{provider}'")
+
+    return ep.format(base=info["base"], **kwargs)
