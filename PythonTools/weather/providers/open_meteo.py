@@ -5,19 +5,19 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
-Modified: 2026-08-10
+ Modified: 2026-08-12
  File: PythonTools/weather/providers/open_meteo.py
  Version: 1.0.0
  Description: Module description here
 """
 
 import json
-import urllib
+import urllib.request
 
 from .builders import build_open_meteo_url
-from ..indexes import compute_indexes_from_fields
 from ...datetime import parse_iso
 from ..registry import WEATHER_PROVIDERS
+from ...units.temperature import compute_indexes_from_fields
 
 def fetch_hourly_open_meteo(lat, lon, timeout, meta):
     url = build_open_meteo_url(lat, lon, "hourly")

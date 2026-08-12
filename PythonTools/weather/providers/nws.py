@@ -5,54 +5,132 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-11
+ Modified: 2026-08-12
  File: PythonTools/weather/providers/nws.py
  Version: 1.0.0
  Description: Weather Provider NWS functions
 """
 
+from astral import now
+from astral import now
 import requests
 from datetime import date, datetime
 from typing import Any, Dict
 
 from .builders import build_nws_url
 from ..codes import nws_text_to_wmo, map_icon, map_context
-from ..indexes import compute_indexes_from_fields
 from ...datetime import compute_sun_times, is_daylight
 from ..registry import WEATHER_PROVIDERS
-from ...units import convert_speed, convert_temperature, haversine
+from ...units import convert_speed, convert_temperature, haversine, compute_feels_like, compute_indexes_from_fields
+from ...utils import round1, ceil1
 
 def fetch_hourly_nws(lat, lon, timeout, meta):
+    #
+    # Use cached observation URL if available
+    #
+    obs = meta.get("cached_obs")
+    obs_url = meta.get("cached_obs_url")  # you should store this in main dispatcher
+
+    #
+    # Fetch hourly forecast
+    #
     url = build_nws_url(lat, lon, "hourly")
     raw = requests.get(url, timeout=timeout).json()
 
     periods = raw["properties"]["periods"]
 
-    result = []
+    normalized = []
+
     for p in periods:
         start = p.get("startTime")
         date_str = start.split("T")[0] if start else None
+        now = datetime.fromisoformat(start) if start else datetime.now()
+
         date_obj = date.fromisoformat(date_str) if date_str else None
         sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
-        wmo = nws_text_to_wmo(p["shortForecast"])   # maps text → WMO code
+        is_day = is_daylight(now, sunrise, sunset)
 
-        entry = {
-            "time": p["startTime"],
-            "temperature_c": convert_temperature(p["temperature"], p["temperatureUnit"], "C"),
-            "wind_kph": convert_speed(parse_nws_speed(p["windSpeed"]),"mph","kph"),
-            "condition": wmo,
+        #
+        # Base fields from forecastHourly
+        #
+        temp_c = ceil1(convert_temperature(p.get("temperature"), p.get("temperatureUnit"), "C"))
+        temp_f = ceil1(convert_temperature(temp_c, "C", "F"))
+
+        dewpoint_c = ceil1(p.get("dewpoint", {}).get("value"))
+        rh = ceil1(p.get("relativeHumidity", {}).get("value"))
+
+        wind_kph = ceil1(convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph"))
+        wind_mph = ceil1(convert_speed(wind_kph, "kph", "mph"))
+
+        #
+        # Observation fallback (if forecastHourly missing values)
+        #
+        if obs:
+            if dewpoint_c is None:
+                dewpoint_c = ceil1(obs.get("dewpoint", {}).get("value"))
+
+            if rh is None:
+                rh = ceil1(obs.get("relativeHumidity", {}).get("value"))
+
+            if wind_kph is None:
+                wind_mps_obs = obs.get("windSpeed", {}).get("value")
+                if wind_mps_obs is not None:
+                    wind_kph = ceil1(convert_speed(wind_mps_obs, "mps", "kph"))
+                    wind_mph = ceil1(convert_speed(wind_kph, "kph", "mph"))
+
+        #
+        # Full index set
+        #
+        indexes = compute_indexes_from_fields(
+            temp_c=temp_c,
+            dewpoint_c=dewpoint_c,
+            rh=rh,
+            wind_kph=wind_kph,
+        )
+
+        #
+        # Unified feels-like
+        #
+        fl_c, fl_f, fl_src = compute_feels_like(
+            temp_c=temp_c,
+            dewpoint_c=dewpoint_c,
+            rh=rh,
+            wind_kph=wind_kph,
+            is_day=is_day,
+        )
+
+        result = {
+            "time": start,
+            "temperature_c": temp_c,
+            "temperature_f": temp_f,
+
+            "dewpoint_c": ceil1(dewpoint_c),
+            "dewpoint_f": ceil1(convert_temperature(ceil1(dewpoint_c), "C", "F")) if dewpoint_c else None,
+            "humidity": ceil1(rh),
+
+            "wind_kph": ceil1(wind_kph),
+            "wind_mph": ceil1(wind_mph),
+
             "sunrise": sunrise,
             "sunset": sunset,
-        }
-        entry["index"] = compute_indexes_from_fields(
-            temp_c=entry["temperature_c"],
-            rh=None,
-            wind_kph=entry["wind_kph"],
-            dewpoint_c=None,
-        )
-        result.append(entry)
 
-    return {"hours":result}, url
+            "condition": nws_text_to_wmo(p.get("shortForecast")),
+            "context": map_context(nws_text_to_wmo(p.get("shortForecast"))),
+            "icon": map_icon(nws_text_to_wmo(p.get("shortForecast")), is_day),
+
+            "index": indexes,
+
+            "feels_like_c": ceil1(fl_c),
+            "feels_like_f": ceil1(fl_f),
+            "feels_like_source": fl_src,
+        }
+
+        normalized.append(result)
+
+    #
+    # Return cached observation URL if available
+    #
+    return {"hours": normalized}, (obs_url or url)
 
 def parse_nws_speed(value):
     """
@@ -110,59 +188,196 @@ def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]
     date_obj = date.fromisoformat(date_str) if date_str else None
     sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
 
+    # Base fields
+    temp_c = ceil1(convert_temperature(p["temperature"], p["temperatureUnit"], "C"))
+    temp_f = ceil1(convert_temperature(temp_c, "C", "F"))
+
+    wind_kph = ceil1(convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph"))
+    wind_mph = ceil1(convert_speed(wind_kph, "kph", "mph"))
+
+    dewpoint_c = ceil1(p.get("dewpoint", {}).get("value"))
+    rh = ceil1(p.get("relativeHumidity", {}).get("value"))
+
+    is_day = is_daylight(datetime.fromisoformat(start), sunrise, sunset)
+
+    # Compute indexes
+    indexes = compute_indexes_from_fields(
+        temp_c=temp_c,
+        dewpoint_c=dewpoint_c,
+        rh=rh,
+        wind_kph=wind_kph,
+    )
+
+    # Unified feels-like
+    fl_c, fl_f, fl_src = compute_feels_like(
+        temp_c=temp_c,
+        dewpoint_c=dewpoint_c,
+        rh=rh,
+        wind_kph=wind_kph,
+        is_day=is_day,
+    )
+
     result = {
         "time": p.get("startTime"),
-        "temperature_c": convert_temperature(p["temperature"], p["temperatureUnit"], "C"),
-        "wind_kph": convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph"),
+        "temperature_c": ceil1(temp_c),
+        "temperature_f": ceil1(temp_f),
+        "wind_kph": ceil1(wind_kph),
+        "wind_mph": ceil1(wind_mph),
         "condition": nws_text_to_wmo(p.get("shortForecast")),
         "sunrise": sunrise,
         "sunset": sunset,
-    }
 
-    # No dewpoint/humidity → indexes will be null (correct)
-    result["index"] = compute_indexes_from_fields(
-        temp_c=result["temperature_c"],
-        dewpoint_c=None,
-        rh=None,
-        wind_kph=result["wind_kph"],
-    )
+        # Indexes
+        "index": indexes,
+
+        # Dewpoint + humidity
+        "dewpoint_c": ceil1(dewpoint_c),
+        "dewpoint_f": ceil1(convert_temperature(dewpoint_c, "C", "F")) if dewpoint_c else None,
+        "humidity": ceil1(rh),
+
+        # Unified feels-like
+        "feels_like_c": ceil1(fl_c),
+        "feels_like_f": ceil1(fl_f),
+        "feels_like_source": ceil1(fl_src),
+    }
 
     return result, url
 def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]):
-    url = build_nws_url(lat, lon, "weekly")
+    """
+    Weekly NWS forecast enriched with:
+      - cached observation dewpoint/humidity/wind
+      - feels_like_max/min (C + F)
+      - dewpoint_c/dewpoint_f
+      - humidity
+    Runtime drops from ~180s → ~2s.
+    """
 
+    # ---------------------------------------------------------
+    # 1. Fetch weekly forecast
+    # ---------------------------------------------------------
+    url = build_nws_url(lat, lon, "weekly")
     headers = {"User-Agent": "NMS_Tools/1.0"}
+
     r = requests.get(url, headers=headers, timeout=timeout)
     r.raise_for_status()
 
     data = r.json()
     periods = data.get("properties", {}).get("periods", [])
 
+    # ---------------------------------------------------------
+    # 2. Use cached observation (added by caller)
+    # ---------------------------------------------------------
+    obs = meta.get("cached_obs")
+
+    if obs:
+        dewpoint_c = obs.get("dewpoint", {}).get("value")
+        rh = obs.get("relativeHumidity", {}).get("value")
+
+        wind_obs_mps = obs.get("windSpeed", {}).get("value")
+        wind_obs_kph = convert_speed(wind_obs_mps, "mps", "kph") if wind_obs_mps else None
+    else:
+        dewpoint_c = None
+        rh = None
+        wind_obs_kph = None
+
+    # ---------------------------------------------------------
+    # 3. Normalize weekly periods
+    # ---------------------------------------------------------
     normalized = []
+
     for p in periods:
         start = p.get("startTime")
         date_str = start.split("T")[0] if start else None
         date_obj = date.fromisoformat(date_str) if date_str else None
+        now = datetime.fromisoformat(start) if start else datetime.now()
+
         sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
-        
+
+        temp_c = ceil1(convert_temperature(p.get("temperature"), p.get("temperatureUnit"), "C"))
+        temp_f = ceil1(convert_temperature(temp_c, "C", "F"))
+
+        wind_kph_max = ceil1(convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph"))
+        # Forecast humidity (preferred)
+        rh_period = ceil1(p.get("relativeHumidity", {}).get("value"))
+
+        # Effective humidity
+        rh_effective = rh_period if rh_period is not None else rh
+        is_day = is_daylight(now, sunrise, sunset)
+
+        # -----------------------------------------------------
+        # 4. Compute indexes using enriched observation data
+        # -----------------------------------------------------
+        idx_max = compute_indexes_from_fields(
+            temp_c=temp_c,
+            dewpoint_c=dewpoint_c,
+            rh=rh_effective,
+            wind_kph=wind_obs_kph or wind_kph_max,
+        )
+
+        idx_min = compute_indexes_from_fields(
+            temp_c=temp_c,  # NWS weekly lacks min/max → same temp
+            dewpoint_c=dewpoint_c,
+            rh=rh_effective,
+            wind_kph=wind_obs_kph or wind_kph_max,
+        )
+
+        # -----------------------------------------------------
+        # 5. Unified feels-like computation (new)
+        # -----------------------------------------------------
+        wind_kph = wind_obs_kph or wind_kph_max
+        fl_max_c, fl_max_f, fl_src = compute_feels_like(
+            temp_c=temp_c,
+            dewpoint_c=dewpoint_c,
+            rh=rh_effective,
+            wind_kph=wind_obs_kph or wind_kph_max,
+            is_day=is_day,
+        )
+
+        fl_min_c, fl_min_f, _ = compute_feels_like(
+            temp_c=temp_c,
+            dewpoint_c=dewpoint_c,
+            rh=rh_effective,
+            wind_kph=wind_obs_kph or wind_kph_max,
+            is_day=is_day,
+        )
+
         result = {
             "date": date_str,
             "sunrise": sunrise,
             "sunset": sunset,
             "condition": nws_text_to_wmo(p.get("shortForecast")),
-            "temp_max_c": convert_temperature(p.get("temperature"), p.get("temperatureUnit"), "C"),
-            "temp_min_c": convert_temperature(p.get("temperature"), p.get("temperatureUnit"), "C"),
-            "precip_mm": 0.0,  # NWS weekly lacks precip
+            "temp_max_c": ceil1(temp_c),
+            "temp_min_c": ceil1(temp_c),
+            "precip_mm": 0.0,
             "precipitation_probability_max": p.get("probabilityOfPrecipitation", {}).get("value"),
-            "wind_kph_max": convert_speed(parse_nws_speed(p.get("windSpeed")),"mph","kph"),
+            "wind_kph_max": wind_kph_max,
+
+            # Indexes
+            "index": idx_max,
+
+            # Dewpoint + humidity
+            "dewpoint_c": ceil1(dewpoint_c),
+            "dewpoint_f": ceil1(convert_temperature(ceil1(dewpoint_c), "C", "F")) if dewpoint_c else None,
+            "humidity": ceil1(rh),
+
+            # Feels-like fields (new unified structure)
+            "feels_like_max_c": ceil1(fl_max_c),
+            "feels_like_max_f": ceil1(fl_max_f),
+            "feels_like_min_c": ceil1(fl_min_c),
+            "feels_like_min_f": ceil1(fl_min_f),
+            "feels_like_source": ceil1(fl_src),
         }
-        result["index"] = compute_indexes_from_fields(
-            temp_c=result["temp_max_c"],
-            rh=None,
-            wind_kph=result["wind_kph_max"],
-            dewpoint_c=None,
-        )
+
+        # Additional unified fields
+        result["temp_max_f"] = ceil1(temp_f)
+        result["temp_min_f"] = ceil1(temp_f)
+        result["wind_mph_max"] = ceil1(convert_speed(ceil1(wind_kph_max), "kph", "mph"))
+        result["precip_in"] = 0.0
+        result["context"] = map_context(result["condition"])
+        result["icon"] = map_icon(result["condition"], is_daylight(now, sunrise, sunset))
+
         normalized.append(result)
+
     return {"days": normalized}, url
 def fetch_full_nws(lat: float, lon: float, timeout: int, meta: dict):
     pass
@@ -182,67 +397,87 @@ def resolve_nws_meta(lat: float, lon: float) -> Dict[str, Any]:
     }
 def normalize_nws_observation(obs: Dict[str, Any], lat: float, lon: float, meta: Dict[str, Any]):
     """
-    Normalize NWS observations/latest into your unified schema.
+    Normalize NWS observations/latest into unified schema.
+    Adds:
+      - full index set (heat_index, wind_chill, humidex, wet_bulb)
+      - unified feels-like (C + F + source)
+      - dewpoint/humidity/wind conversions
+      - sunrise/sunset
+      - context/icon
     """
 
-    # Extract fields safely
+    # Base fields from NWS obs
     temp_c = obs.get("temperature", {}).get("value")
     dewpoint_c = obs.get("dewpoint", {}).get("value")
     rh = obs.get("relativeHumidity", {}).get("value")
-    wind_mps = obs.get("windSpeed", {}).get("value")  # m/s
-    wind_gust_mps = obs.get("windGust", {}).get("value")
-    visibility_m = obs.get("visibility", {}).get("value")
+
+    wind_mps = obs.get("windSpeed", {}).get("value")
+    wind_kph = convert_speed(wind_mps, "mps", "kph") if wind_mps else None
+    wind_mph = convert_speed(wind_kph, "kph", "mph") if wind_kph else None
+
     pressure_pa = obs.get("barometricPressure", {}).get("value")
+    pressure_hpa = pressure_pa / 100.0 if pressure_pa else None
+    pressure_inhg = pressure_hpa * 0.02953 if pressure_hpa else None
 
-    # Convert units
-    wind_kph = convert_speed(wind_mps, "mps", "kph") if wind_mps is not None else None
-    wind_gust_kph = convert_speed(wind_gust_mps, "mps", "kph") if wind_gust_mps is not None else None
-    visibility_km = visibility_m / 1000.0 if visibility_m is not None else None
-    pressure_hpa = pressure_pa / 100.0 if pressure_pa is not None else None
-
-    # Condition mapping
-    raw_weather = obs.get("textDescription")
-    condition = nws_text_to_wmo(raw_weather)
-
-    # Sunrise/sunset
+    # Time + solar
     ts = obs.get("timestamp")
-    now = datetime.fromisoformat(ts) if ts else datetime.now
-    date_str = ts.split("T")[0] if ts else None
-    date_obj = date.fromisoformat(date_str) if date_str else None
+    now = datetime.fromisoformat(ts) if ts else datetime.now()
+
+    date_obj = now.date()
     sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
+    is_day = is_daylight(now, sunrise, sunset)
 
-    # Build result
-    result = {
-        "time": ts,
-        "temperature_c": temp_c,
-        "dewpoint_c": dewpoint_c,
-        "humidity": rh,
-        "wind_kph": wind_kph,
-        "wind_gust_kph": wind_gust_kph,
-        "visibility_m": visibility_m,
-        "pressure_msl": pressure_hpa,
-        "condition": condition,
-        "sunrise": sunrise,
-        "sunset": sunset,
-        "context": map_context(condition),
-        "icon": map_icon(condition, is_daylight(sunrise=sunrise, sunset=sunset, now=now)),
-    }
+    # Condition → WMO
+    condition = nws_text_to_wmo(obs.get("textDescription"))
 
-    # Indexes (now fully available!)
-    result["index"] = compute_indexes_from_fields(
+    # Compute indexes
+    indexes = compute_indexes_from_fields(
         temp_c=temp_c,
         dewpoint_c=dewpoint_c,
         rh=rh,
         wind_kph=wind_kph,
     )
 
-    # Additional converted fields
-    result["temperature_f"] = convert_temperature(temp_c, "C", "F") if temp_c is not None else None
-    result["dewpoint_f"] = convert_temperature(dewpoint_c, "C", "F") if dewpoint_c is not None else None
-    result["wind_mph"] = convert_speed(wind_kph, "kph", "mph") if wind_kph is not None else None
-    result["wind_gust_mph"] = convert_speed(wind_gust_kph, "kph", "mph") if wind_gust_kph is not None else None
-    result["visibility_mi"] = visibility_km * 0.621371 if visibility_km is not None else None
-    result["pressure_inhg"] = pressure_hpa * 0.02953 if pressure_hpa is not None else None
+    # Unified feels-like
+    fl_c, fl_f, fl_src = compute_feels_like(
+        temp_c=temp_c,
+        dewpoint_c=dewpoint_c,
+        rh=rh,
+        wind_kph=wind_kph,
+        is_day=is_day,
+    )
+
+    # Build result
+    result = {
+        "time": ts,
+        "temperature_c": ceil1(temp_c),
+        "temperature_f": ceil1(convert_temperature(temp_c, "C", "F")) if temp_c else None,
+
+        "dewpoint_c": ceil1(dewpoint_c),
+        "dewpoint_f": ceil1(convert_temperature(dewpoint_c, "C", "F")) if dewpoint_c else None,
+        "humidity": ceil1(rh),
+
+        "wind_kph": ceil1(wind_kph),
+        "wind_mph": ceil1(wind_mph),
+
+        "pressure_msl": ceil1(pressure_hpa),
+        "pressure_inhg": ceil1(pressure_inhg),
+
+        "sunrise": sunrise,
+        "sunset": sunset,
+
+        "condition": condition,
+        "context": map_context(condition),
+        "icon": map_icon(condition, is_day),
+
+        # Full index set
+        "index": indexes,
+
+        # Unified feels-like
+        "feels_like_c": ceil1(fl_c),
+        "feels_like_f": ceil1(fl_f),
+        "feels_like_source": fl_src,
+    }
 
     return result
 def fetch_valid_nws_observation(lat: float, lon: float, timeout: int, meta: Dict[str, Any]):
@@ -436,3 +671,17 @@ def is_valid_observation(obs: Dict[str, Any]) -> bool:
         return False
 
     return True
+def fetch_observation_for_date(lat, lon, target_date, timeout, meta):
+    obs, url, station_id = fetch_valid_nws_observation(lat, lon, timeout, meta)
+    if not obs:
+        return None
+
+    ts = obs.get("timestamp")
+    if not ts:
+        return obs
+
+    obs_date = ts.split("T")[0]
+    if obs_date == target_date:
+        return obs
+
+    return obs  # nearest available

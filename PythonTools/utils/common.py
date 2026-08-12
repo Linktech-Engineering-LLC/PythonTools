@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-08-03
+ Modified: 2026-08-12
  File: PythonTools/utils/common.py
  Version: 1.0.0
  Description: Description of this module
@@ -16,6 +16,7 @@
 
 import sys
 import os
+import math
 import re
 import json
 import yaml
@@ -234,3 +235,7 @@ def normalize_list(values):
                 out.append(name)
 
     return list(dict.fromkeys(out))
+def round1(x):
+    return round(x, 1) if x is not None else None
+def ceil1(x):
+    return math.ceil(x * 10) / 10 if x is not None else None
