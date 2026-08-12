@@ -168,7 +168,7 @@ def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]
         pass
 
     #
-    # 2. Fallback: use forecastHourly (your existing logic)
+    # 2. Fallback: use forecastHourly
     #
     url = build_nws_url(lat, lon, "current")
     r = requests.get(url, headers=headers, timeout=timeout)
@@ -182,79 +182,83 @@ def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]
 
     p = periods[0]
 
+    # Raw values (NO rounding here)
+    temp_c_raw = convert_temperature(p["temperature"], p["temperatureUnit"], "C")
+    dewpoint_c_raw = p.get("dewpoint", {}).get("value")
+    rh_raw = p.get("relativeHumidity", {}).get("value")
+    wind_mps_raw = parse_nws_speed(p.get("windSpeed"))
+
+    # Observation fallback
+    obs = meta.get("cached_obs")
+    if obs:
+        if dewpoint_c_raw is None:
+            dewpoint_c_raw = obs.get("dewpoint", {}).get("value")
+
+        if rh_raw is None:
+            rh_raw = obs.get("relativeHumidity", {}).get("value")
+
+        if wind_mps_raw is None:
+            wind_mps_raw = obs.get("windSpeed", {}).get("value")
+
+    # Convert wind
+    wind_kph_raw = convert_speed(wind_mps_raw, "mps", "kph")
+    wind_mph_raw = convert_speed(wind_kph_raw, "kph", "mph")
+
     # Compute sunrise/sunset
     start = p.get("startTime")
-    date_str = start.split("T")[0] if start else None
-    date_obj = date.fromisoformat(date_str) if date_str else None
+    date_str = start.split("T")[0]
+    date_obj = date.fromisoformat(date_str)
     sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
-
-    # Base fields
-    temp_c = ceil1(convert_temperature(p["temperature"], p["temperatureUnit"], "C"))
-    temp_f = ceil1(convert_temperature(temp_c, "C", "F"))
-
-    wind_kph = ceil1(convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph"))
-    wind_mph = ceil1(convert_speed(wind_kph, "kph", "mph"))
-
-    dewpoint_c = ceil1(p.get("dewpoint", {}).get("value"))
-    rh = ceil1(p.get("relativeHumidity", {}).get("value"))
-
     is_day = is_daylight(datetime.fromisoformat(start), sunrise, sunset)
 
-    # Compute indexes
-    indexes = compute_indexes_from_fields(
-        temp_c=temp_c,
-        dewpoint_c=dewpoint_c,
-        rh=rh,
-        wind_kph=wind_kph,
+    # Compute indexes (RAW values)
+    indexes_raw = compute_indexes_from_fields(
+        temp_c=temp_c_raw,
+        dewpoint_c=dewpoint_c_raw,
+        rh=rh_raw,
+        wind_kph=wind_kph_raw,
     )
 
-    # Unified feels-like
-    fl_c, fl_f, fl_src = compute_feels_like(
-        temp_c=temp_c,
-        dewpoint_c=dewpoint_c,
-        rh=rh,
-        wind_kph=wind_kph,
+    # Unified feels-like (RAW values)
+    fl_c_raw, fl_f_raw, fl_src = compute_feels_like(
+        temp_c=temp_c_raw,
+        dewpoint_c=dewpoint_c_raw,
+        rh=rh_raw,
+        wind_kph=wind_kph_raw,
         is_day=is_day,
     )
 
+    # Presentation layer (CEILING ROUNDING)
     result = {
-        "time": p.get("startTime"),
-        "temperature_c": ceil1(temp_c),
-        "temperature_f": ceil1(temp_f),
-        "wind_kph": ceil1(wind_kph),
-        "wind_mph": ceil1(wind_mph),
-        "condition": nws_text_to_wmo(p.get("shortForecast")),
+        "time": start,
+        "temperature_c": ceil1(temp_c_raw),
+        "temperature_f": ceil1(convert_temperature(temp_c_raw, "C", "F")),
+        "wind_kph": ceil1(wind_kph_raw),
+        "wind_mph": ceil1(wind_mph_raw),
         "sunrise": sunrise,
         "sunset": sunset,
+        "condition": nws_text_to_wmo(p.get("shortForecast")),
+        "context": map_context(nws_text_to_wmo(p.get("shortForecast"))),
+        "icon": map_icon(nws_text_to_wmo(p.get("shortForecast")), is_day),
 
-        # Indexes
-        "index": indexes,
+        "dewpoint_c": ceil1(dewpoint_c_raw),
+        "dewpoint_f": ceil1(convert_temperature(dewpoint_c_raw, "C", "F")) if dewpoint_c_raw else None,
+        "humidity": rh_raw,  # humidity should NOT be rounded
 
-        # Dewpoint + humidity
-        "dewpoint_c": ceil1(dewpoint_c),
-        "dewpoint_f": ceil1(convert_temperature(dewpoint_c, "C", "F")) if dewpoint_c else None,
-        "humidity": ceil1(rh),
+        "index": {
+            "heat_index": ceil1(indexes_raw["heat_index"]),
+            "wind_chill": ceil1(indexes_raw["wind_chill"]),
+            "humidex": ceil1(indexes_raw["humidex"]),
+            "wet_bulb": ceil1(indexes_raw["wet_bulb"]),
+        },
 
-        # Unified feels-like
-        "feels_like_c": ceil1(fl_c),
-        "feels_like_f": ceil1(fl_f),
-        "feels_like_source": ceil1(fl_src),
+        "feels_like_c": ceil1(fl_c_raw),
+        "feels_like_f": ceil1(fl_f_raw),
+        "feels_like_source": fl_src,  # NEVER ROUND THIS
     }
 
     return result, url
 def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]):
-    """
-    Weekly NWS forecast enriched with:
-      - cached observation dewpoint/humidity/wind
-      - feels_like_max/min (C + F)
-      - dewpoint_c/dewpoint_f
-      - humidity
-    Runtime drops from ~180s → ~2s.
-    """
-
-    # ---------------------------------------------------------
-    # 1. Fetch weekly forecast
-    # ---------------------------------------------------------
     url = build_nws_url(lat, lon, "weekly")
     headers = {"User-Agent": "NMS_Tools/1.0"}
 
@@ -264,117 +268,121 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
     data = r.json()
     periods = data.get("properties", {}).get("periods", [])
 
-    # ---------------------------------------------------------
-    # 2. Use cached observation (added by caller)
-    # ---------------------------------------------------------
+    # Cached observation (raw values)
     obs = meta.get("cached_obs")
-
     if obs:
-        dewpoint_c = obs.get("dewpoint", {}).get("value")
-        rh = obs.get("relativeHumidity", {}).get("value")
-
+        dewpoint_c_obs = obs.get("dewpoint", {}).get("value")
+        rh_obs = obs.get("relativeHumidity", {}).get("value")
         wind_obs_mps = obs.get("windSpeed", {}).get("value")
         wind_obs_kph = convert_speed(wind_obs_mps, "mps", "kph") if wind_obs_mps else None
     else:
-        dewpoint_c = None
-        rh = None
+        dewpoint_c_obs = None
+        rh_obs = None
         wind_obs_kph = None
 
-    # ---------------------------------------------------------
-    # 3. Normalize weekly periods
-    # ---------------------------------------------------------
     normalized = []
 
     for p in periods:
         start = p.get("startTime")
-        date_str = start.split("T")[0] if start else None
-        date_obj = date.fromisoformat(date_str) if date_str else None
-        now = datetime.fromisoformat(start) if start else datetime.now()
+        date_str = start.split("T")[0]
+        date_obj = date.fromisoformat(date_str)
+        now = datetime.fromisoformat(start)
 
         sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
-
-        temp_c = ceil1(convert_temperature(p.get("temperature"), p.get("temperatureUnit"), "C"))
-        temp_f = ceil1(convert_temperature(temp_c, "C", "F"))
-
-        wind_kph_max = ceil1(convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph"))
-        # Forecast humidity (preferred)
-        rh_period = ceil1(p.get("relativeHumidity", {}).get("value"))
-
-        # Effective humidity
-        rh_effective = rh_period if rh_period is not None else rh
         is_day = is_daylight(now, sunrise, sunset)
 
-        # -----------------------------------------------------
-        # 4. Compute indexes using enriched observation data
-        # -----------------------------------------------------
-        idx_max = compute_indexes_from_fields(
-            temp_c=temp_c,
-            dewpoint_c=dewpoint_c,
-            rh=rh_effective,
-            wind_kph=wind_obs_kph or wind_kph_max,
+        # RAW temperature
+        temp_c_raw = convert_temperature(p.get("temperature"), p.get("temperatureUnit"), "C")
+
+        # RAW wind
+        wind_kph_max_raw = convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph")
+
+        # RAW humidity from period
+        rh_period_raw = p.get("relativeHumidity", {}).get("value")
+
+        # Effective humidity (raw)
+        rh_effective_raw = rh_period_raw if rh_period_raw is not None else rh_obs
+
+        # RAW dewpoint
+        dewpoint_c_raw = dewpoint_c_obs
+
+        # RAW wind for feels-like
+        wind_kph_raw = wind_obs_kph or wind_kph_max_raw
+
+        # Indexes (RAW values)
+        idx_max_raw = compute_indexes_from_fields(
+            temp_c=temp_c_raw,
+            dewpoint_c=dewpoint_c_raw,
+            rh=rh_effective_raw,
+            wind_kph=wind_kph_raw,
         )
 
-        idx_min = compute_indexes_from_fields(
-            temp_c=temp_c,  # NWS weekly lacks min/max → same temp
-            dewpoint_c=dewpoint_c,
-            rh=rh_effective,
-            wind_kph=wind_obs_kph or wind_kph_max,
+        idx_min_raw = compute_indexes_from_fields(
+            temp_c=temp_c_raw,
+            dewpoint_c=dewpoint_c_raw,
+            rh=rh_effective_raw,
+            wind_kph=wind_kph_raw,
         )
 
-        # -----------------------------------------------------
-        # 5. Unified feels-like computation (new)
-        # -----------------------------------------------------
-        wind_kph = wind_obs_kph or wind_kph_max
-        fl_max_c, fl_max_f, fl_src = compute_feels_like(
-            temp_c=temp_c,
-            dewpoint_c=dewpoint_c,
-            rh=rh_effective,
-            wind_kph=wind_obs_kph or wind_kph_max,
+        # Unified feels-like (RAW values)
+        fl_max_c_raw, fl_max_f_raw, fl_src = compute_feels_like(
+            temp_c=temp_c_raw,
+            dewpoint_c=dewpoint_c_raw,
+            rh=rh_effective_raw,
+            wind_kph=wind_kph_raw,
             is_day=is_day,
         )
 
-        fl_min_c, fl_min_f, _ = compute_feels_like(
-            temp_c=temp_c,
-            dewpoint_c=dewpoint_c,
-            rh=rh_effective,
-            wind_kph=wind_obs_kph or wind_kph_max,
+        fl_min_c_raw, fl_min_f_raw, _ = compute_feels_like(
+            temp_c=temp_c_raw,
+            dewpoint_c=dewpoint_c_raw,
+            rh=rh_effective_raw,
+            wind_kph=wind_kph_raw,
             is_day=is_day,
         )
 
+        # Presentation layer (CEILING ROUNDING)
         result = {
             "date": date_str,
             "sunrise": sunrise,
             "sunset": sunset,
             "condition": nws_text_to_wmo(p.get("shortForecast")),
-            "temp_max_c": ceil1(temp_c),
-            "temp_min_c": ceil1(temp_c),
+            "context": map_context(nws_text_to_wmo(p.get("shortForecast"))),
+            "icon": map_icon(nws_text_to_wmo(p.get("shortForecast")), is_day),
+
+            "temp_max_c": ceil1(temp_c_raw),
+            "temp_min_c": ceil1(temp_c_raw),
+            "temp_max_f": ceil1(convert_temperature(temp_c_raw, "C", "F")),
+            "temp_min_f": ceil1(convert_temperature(temp_c_raw, "C", "F")),
+
             "precip_mm": 0.0,
+            "precip_in": 0.0,
             "precipitation_probability_max": p.get("probabilityOfPrecipitation", {}).get("value"),
-            "wind_kph_max": wind_kph_max,
 
-            # Indexes
-            "index": idx_max,
+            "wind_kph_max": ceil1(wind_kph_max_raw),
+            "wind_mph_max": ceil1(convert_speed(wind_kph_max_raw, "kph", "mph")),
 
-            # Dewpoint + humidity
-            "dewpoint_c": ceil1(dewpoint_c),
-            "dewpoint_f": ceil1(convert_temperature(ceil1(dewpoint_c), "C", "F")) if dewpoint_c else None,
-            "humidity": ceil1(rh),
+            "dewpoint_c": ceil1(dewpoint_c_raw),
+            "dewpoint_f": ceil1(convert_temperature(dewpoint_c_raw, "C", "F")) if dewpoint_c_raw else None,
 
-            # Feels-like fields (new unified structure)
-            "feels_like_max_c": ceil1(fl_max_c),
-            "feels_like_max_f": ceil1(fl_max_f),
-            "feels_like_min_c": ceil1(fl_min_c),
-            "feels_like_min_f": ceil1(fl_min_f),
-            "feels_like_source": ceil1(fl_src),
+            # humidity MUST NOT be rounded
+            "humidity": rh_effective_raw,
+
+            "index": {
+                "heat_index": ceil1(idx_max_raw["heat_index"]),
+                "wind_chill": ceil1(idx_max_raw["wind_chill"]),
+                "humidex": ceil1(idx_max_raw["humidex"]),
+                "wet_bulb": ceil1(idx_max_raw["wet_bulb"]),
+            },
+
+            "feels_like_max_c": ceil1(fl_max_c_raw),
+            "feels_like_max_f": ceil1(fl_max_f_raw),
+            "feels_like_min_c": ceil1(fl_min_c_raw),
+            "feels_like_min_f": ceil1(fl_min_f_raw),
+
+            # NEVER ROUND THIS
+            "feels_like_source": fl_src,
         }
-
-        # Additional unified fields
-        result["temp_max_f"] = ceil1(temp_f)
-        result["temp_min_f"] = ceil1(temp_f)
-        result["wind_mph_max"] = ceil1(convert_speed(ceil1(wind_kph_max), "kph", "mph"))
-        result["precip_in"] = 0.0
-        result["context"] = map_context(result["condition"])
-        result["icon"] = map_icon(result["condition"], is_daylight(now, sunrise, sunset))
 
         normalized.append(result)
 
