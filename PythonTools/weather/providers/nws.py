@@ -5,14 +5,13 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-12
+ Modified: 2026-08-14
  File: PythonTools/weather/providers/nws.py
  Version: 1.0.0
  Description: Weather Provider NWS functions
 """
 
-from astral import now
-from astral import now
+#from astral import now
 import requests
 from datetime import date, datetime
 from typing import Any, Dict
@@ -21,8 +20,10 @@ from .builders import build_nws_url
 from ..codes import nws_text_to_wmo, map_icon, map_context
 from ...datetime import compute_sun_times, is_daylight
 from ..registry import WEATHER_PROVIDERS
-from ...units import convert_speed, convert_temperature, haversine, compute_feels_like, compute_indexes_from_fields
-from ...utils import round1, ceil1
+from ..indexes import convert_speed, convert_temperature, compute_feels_like, compute_indexes_from_fields
+from ..types import normalize_index_fields
+from ...units import haversine
+from ...utils import ceil1
 
 def fetch_hourly_nws(lat, lon, timeout, meta):
     #
@@ -44,11 +45,11 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
     for p in periods:
         start = p.get("startTime")
         date_str = start.split("T")[0] if start else None
-        now = datetime.fromisoformat(start) if start else datetime.now()
+        ct = datetime.fromisoformat(start) if start else datetime.now()
 
         date_obj = date.fromisoformat(date_str) if date_str else None
         sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
-        is_day = is_daylight(now, sunrise, sunset)
+        is_day = is_daylight(ct, sunrise, sunset)
 
         #
         # Base fields from forecastHourly
@@ -81,11 +82,15 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
         #
         # Full index set
         #
+        pressure_pa = obs.get("barometricPressure", {}).get("value") if obs else None
+        pressure_hpa = pressure_pa / 100 if pressure_pa is not None else None
+
         indexes = compute_indexes_from_fields(
             temp_c=temp_c,
             dewpoint_c=dewpoint_c,
             rh=rh,
             wind_kph=wind_kph,
+            pressure_hpa=pressure_hpa
         )
 
         #
@@ -118,7 +123,7 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
             "context": map_context(nws_text_to_wmo(p.get("shortForecast"))),
             "icon": map_icon(nws_text_to_wmo(p.get("shortForecast")), is_day),
 
-            "index": indexes,
+            "index": normalize_index_fields(indexes),
 
             "feels_like_c": ceil1(fl_c),
             "feels_like_f": ceil1(fl_f),
@@ -131,7 +136,6 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
     # Return cached observation URL if available
     #
     return {"hours": normalized}, (obs_url or url)
-
 def parse_nws_speed(value):
     """
     Extract the first numeric speed from NWS strings.
@@ -212,11 +216,14 @@ def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]
     is_day = is_daylight(datetime.fromisoformat(start), sunrise, sunset)
 
     # Compute indexes (RAW values)
+    pressure_pa = obs.get("barometricPressure", {}).get("value") if obs else None
+    pressure_hpa = pressure_pa / 100 if pressure_pa is not None else None
     indexes_raw = compute_indexes_from_fields(
         temp_c=temp_c_raw,
         dewpoint_c=dewpoint_c_raw,
         rh=rh_raw,
         wind_kph=wind_kph_raw,
+        pressure_hpa=pressure_hpa,
     )
 
     # Unified feels-like (RAW values)
@@ -245,12 +252,7 @@ def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]
         "dewpoint_f": ceil1(convert_temperature(dewpoint_c_raw, "C", "F")) if dewpoint_c_raw else None,
         "humidity": rh_raw,  # humidity should NOT be rounded
 
-        "index": {
-            "heat_index": ceil1(indexes_raw["heat_index"]),
-            "wind_chill": ceil1(indexes_raw["wind_chill"]),
-            "humidex": ceil1(indexes_raw["humidex"]),
-            "wet_bulb": ceil1(indexes_raw["wet_bulb"]),
-        },
+        "index": normalize_index_fields(indexes_raw),
 
         "feels_like_c": ceil1(fl_c_raw),
         "feels_like_f": ceil1(fl_f_raw),
@@ -286,10 +288,10 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
         start = p.get("startTime")
         date_str = start.split("T")[0]
         date_obj = date.fromisoformat(date_str)
-        now = datetime.fromisoformat(start)
+        ct = datetime.fromisoformat(start)
 
         sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
-        is_day = is_daylight(now, sunrise, sunset)
+        is_day = is_daylight(ct, sunrise, sunset)
 
         # RAW temperature
         temp_c_raw = convert_temperature(p.get("temperature"), p.get("temperatureUnit"), "C")
@@ -308,6 +310,8 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
 
         # RAW wind for feels-like
         wind_kph_raw = wind_obs_kph or wind_kph_max_raw
+        pressure_pa = obs.get("barometricPressure", {}).get("value") if obs else None
+        pressure_hpa = pressure_pa / 100 if pressure_pa is not None else None
 
         # Indexes (RAW values)
         idx_max_raw = compute_indexes_from_fields(
@@ -315,6 +319,7 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
             dewpoint_c=dewpoint_c_raw,
             rh=rh_effective_raw,
             wind_kph=wind_kph_raw,
+            pressure_hpa=pressure_hpa,
         )
 
         idx_min_raw = compute_indexes_from_fields(
@@ -322,6 +327,7 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
             dewpoint_c=dewpoint_c_raw,
             rh=rh_effective_raw,
             wind_kph=wind_kph_raw,
+            pressure_hpa=pressure_hpa,
         )
 
         # Unified feels-like (RAW values)
@@ -368,12 +374,7 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
             # humidity MUST NOT be rounded
             "humidity": rh_effective_raw,
 
-            "index": {
-                "heat_index": ceil1(idx_max_raw["heat_index"]),
-                "wind_chill": ceil1(idx_max_raw["wind_chill"]),
-                "humidex": ceil1(idx_max_raw["humidex"]),
-                "wet_bulb": ceil1(idx_max_raw["wet_bulb"]),
-            },
+            "index": normalize_index_fields(idx_max_raw),
 
             "feels_like_max_c": ceil1(fl_max_c_raw),
             "feels_like_max_f": ceil1(fl_max_f_raw),
@@ -429,11 +430,11 @@ def normalize_nws_observation(obs: Dict[str, Any], lat: float, lon: float, meta:
 
     # Time + solar
     ts = obs.get("timestamp")
-    now = datetime.fromisoformat(ts) if ts else datetime.now()
+    ct = datetime.fromisoformat(ts) if ts else datetime.now()
 
-    date_obj = now.date()
+    date_obj = ct.date()
     sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
-    is_day = is_daylight(now, sunrise, sunset)
+    is_day = is_daylight(ct, sunrise, sunset)
 
     # Condition → WMO
     condition = nws_text_to_wmo(obs.get("textDescription"))
@@ -444,6 +445,7 @@ def normalize_nws_observation(obs: Dict[str, Any], lat: float, lon: float, meta:
         dewpoint_c=dewpoint_c,
         rh=rh,
         wind_kph=wind_kph,
+        pressure_hpa=pressure_hpa,
     )
 
     # Unified feels-like
@@ -479,7 +481,7 @@ def normalize_nws_observation(obs: Dict[str, Any], lat: float, lon: float, meta:
         "icon": map_icon(condition, is_day),
 
         # Full index set
-        "index": indexes,
+        "index": normalize_index_fields(indexes),
 
         # Unified feels-like
         "feels_like_c": ceil1(fl_c),

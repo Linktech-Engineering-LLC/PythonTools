@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-12
+ Modified: 2026-08-14
  File: PythonTools/weather/providers/open_meteo.py
  Version: 1.0.0
  Description: Module description here
@@ -15,9 +15,11 @@ import json
 import urllib.request
 
 from .builders import build_open_meteo_url
+from ..indexes import compute_indexes_from_fields
 from ...datetime import parse_iso
 from ..registry import WEATHER_PROVIDERS
-from ...units.temperature import compute_indexes_from_fields
+from ..types import normalize_index_fields
+from ...utils import ceil1
 
 def fetch_hourly_open_meteo(lat, lon, timeout, meta):
     url = build_open_meteo_url(lat, lon, "hourly")
@@ -40,14 +42,14 @@ def fetch_hourly_open_meteo(lat, lon, timeout, meta):
             "sunset": sunset,
         }
 
-        entry["indexes"] = compute_indexes_from_fields(
+        indexes = compute_indexes_from_fields(
             temp_c = hourly["temperature_2m"][i],
             dewpoint_c = hourly["dewpoint_2m"][i],
             rh = hourly["relativehumidity_2m"][i],
             wind_kph = hourly["windspeed_10m"][i],
+            pressure_hpa=hourly["pressure_msl"][i],
         )
-
-
+        entry["index"] = normalize_index_fields(indexes)
         result.append(entry)
 
     return {"hours": result}, url
@@ -97,12 +99,14 @@ def fetch_current_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
         "pressure_msl": h("pressure_msl"),
         "precipitation_probability": h("precipitation_probability"),
     }
-    result["index"] = compute_indexes_from_fields(
+    indexes = compute_indexes_from_fields(
         temp_c=result["temperature_c"],
         wind_kph=result["wind_kph"],
         dewpoint_c=result["dewpoint_c"],
         rh=result["humidity"],
+        pressure_hpa=result["pressure_msl"],
     )
+    result["index"] = normalize_index_fields(indexes)
     return result, url
 
 def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
@@ -114,6 +118,18 @@ def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
     daily = raw.get("daily", {})
     dates = daily.get("time", [])
 
+    # NWS observations (added earlier in main())
+    obs = meta.get("cached_obs")
+    if not obs:
+        raise RuntimeError("Open-Meteo weekly requires cached NWS observations")
+
+    # Extract observation fields
+    dewpoint_c = obs.get("dewpoint", {}).get("value")
+    rh = obs.get("relativeHumidity", {}).get("value")
+
+    pressure_pa = obs.get("barometricPressure", {}).get("value")
+    pressure_hpa = pressure_pa / 100 if pressure_pa else None
+
     days = []
     for i, d in enumerate(dates[:7]):  # next 7 days
 
@@ -122,25 +138,32 @@ def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
             if not arr or i >= len(arr):
                 return default
             return arr[i]
+
+        temp_max_c = h("temperature_2m_max")
+        wind_kph_max = h("windspeed_10m_max")
+        indexes = compute_indexes_from_fields(
+            temp_c=temp_max_c,
+            dewpoint_c=dewpoint_c,
+            rh=rh,
+            wind_kph=wind_kph_max,
+            pressure_hpa=pressure_hpa
+        )
+
         days.append({
             "date": d,
             "sunrise": h("sunrise"),
             "sunset": h("sunset"),
-            "condition": h("weathercode"),  # WMO code
-            "temp_max_c": h("temperature_2m_max"),
+            "condition": h("weathercode"),
+            "temp_max_c": temp_max_c,
             "temp_min_c": h("temperature_2m_min"),
             "precip_mm": h("precipitation_sum"),
             "precipitation_probability_max": h("precipitation_probability_max"),
-            "wind_kph_max": h("windspeed_10m_max"),
-            "index": compute_indexes_from_fields(
-                temp_c=h("temperature_2m_max"),
-                dewpoint_c=None,
-                rh=None,
-                wind_kph= h("windspeed_10m_max")
-            )
+            "wind_kph_max": wind_kph_max,
+
+            # Full index engine using NWS obs + Open-Meteo forecast
+            "index": normalize_index_fields(indexes),
         })
 
-    # RAW weekly result — no normalization, no icons, no context
     return {"days": days}, url
 def fetch_full_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
     pass

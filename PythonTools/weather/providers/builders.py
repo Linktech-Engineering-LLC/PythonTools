@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
-Modified: 2026-08-10
+ Modified: 2026-08-14
  File: PythonTools/weather/providers/builders.py
  Version: 1.0.0
  Description: Module description here
@@ -52,6 +52,7 @@ def build_open_meteo_url(lat: float, lon: float, mode: str) -> str:
                     "dewpoint_2m",
                     "relativehumidity_2m",
                     "pressure_msl",
+                    "pressure_msl",
                     "visibility",
                     "precipitation",
                     "precipitation_probability",
@@ -97,8 +98,11 @@ def build_open_meteo_url(lat: float, lon: float, mode: str) -> str:
                     "precipitation_sum",
                     "precipitation_probability_max",
                     "windspeed_10m_max",
+                    "windgusts_10m_max",
                     "sunrise",
                     "sunset",
+                    "uv_index_max",
+                    "uv_index_clear_sky_max",
                 ]),
                 "timezone": "auto",
             }
