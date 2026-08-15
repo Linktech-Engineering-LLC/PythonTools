@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-14
+ Modified: 2026-08-15
  File: PythonTools/weather/__init__.py
  Version: 1.0.0
  Description: Module description here
@@ -13,7 +13,13 @@ Created: 2026-08-09
 
 from .codes import WEATHER_CODES, map_context, map_icon
 from .formatters import fmt_clouds, fmt_precip, fmt_temp, fmt_wind
-from .normalize import convert_units_mode_aware
+from .normalize import (
+    convert_units_mode_aware,
+    normalize_index_fields,
+    merge_daily_periods,
+    reorder_hourly_current_first,
+    normalize_gusts_kph_mph,
+)
 from .registry import WEATHER_PROVIDERS
 from .types import WeatherIndexes
 from .indexes import (
@@ -22,6 +28,7 @@ from .indexes import (
     compute_wind_chill,
     compute_humidex,
     compute_wet_bulb,
+    compute_mixing_ratio,
     compute_indexes_from_fields,
 )
 
@@ -41,4 +48,7 @@ __all__ = [
     "compute_wet_bulb",
     "compute_feels_like",
     "compute_indexes_from_fields",
+    "normalize_index_fields",
+    "merge_daily_periods",
+    "reorder_hourly_current_first",
 ]

@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-09
+ Modified: 2026-08-15
  File: PythonTools/weather/normalize.py
  Version: 1.0.0
  Description: Weather Normalization and Enrichment Utilities
@@ -17,6 +17,7 @@ from typing import Any, Dict
 from .codes import WEATHER_CODES
 from ..datetime import ensure_dt
 from ..units import convert_temperature, convert_speed, convert_distance,convert_pressure
+from ..utils.common import ceil1
 
 def enrich(entry: Dict[str, Any],
            units: str,
@@ -140,7 +141,8 @@ def convert_units_any(data: Dict[str, Any], units: str) -> Dict[str, Any]:
     # Pressure
     if out.get("pressure_msl") is not None:
         out["pressure_inhg"] = convert_pressure(out["pressure_msl"], "hpa","inhg")
-
+    if out.get("wind_gust_kph") is not None:
+        out["wind_gust_mph"] = convert_speed(out["wind_gust_kph"], "kph", "mph")
     return out
 def slice_weekly_days(days):
     today = date.today()
@@ -208,3 +210,216 @@ def slice_next_24_hours(hourly):
     # Slice next 24 hours
     end = start + 24
     return range(start, min(end, len(times)))
+def normalize_index_fields(idx: dict) -> dict:
+    return {
+        "heat_index": ceil1(idx.get("heat_index")),
+        "wind_chill": ceil1(idx.get("wind_chill")),
+        "humidex": ceil1(idx.get("humidex")),
+        "wet_bulb": ceil1(idx.get("wet_bulb")),
+
+        "vapor_pressure": ceil1(idx.get("vapor_pressure")),
+        "saturation_vapor_pressure": ceil1(idx.get("saturation_vapor_pressure")),
+        "mixing_ratio": ceil1(idx.get("mixing_ratio")),
+        "specific_humidity": ceil1(idx.get("specific_humidity")),
+        "air_density": ceil1(idx.get("air_density")),
+        "pressure_altitude": ceil1(idx.get("pressure_altitude")),
+    }
+def merge_daily_periods(days: list, hourly: list):
+    """
+    Merge multiple forecast periods (NWS) or daily blocks (Open-Meteo)
+    into unified daily records.
+    """
+
+    # ------------------------------------------------------------
+    # Step 1: Group periods by date
+    # ------------------------------------------------------------
+    grouped = {}
+    for p in days:
+        d = p["date"]
+        grouped.setdefault(d, []).append(p)
+
+    merged = []
+
+    # ------------------------------------------------------------
+    # Step 2: Merge each date's periods
+    # ------------------------------------------------------------
+    for d, plist in grouped.items():
+
+        # Temperature merge
+        temp_max_c = max(p.get("temp_max_c") for p in plist if p.get("temp_max_c") is not None)
+        temp_min_c = min(p.get("temp_min_c") for p in plist if p.get("temp_min_c") is not None)
+
+        # Wind merge
+        wind_kph_max = max(p.get("wind_kph_max") for p in plist if p.get("wind_kph_max") is not None)
+
+        # Precip merge
+        precip_prob = max(
+            (p.get("precipitation_probability_max") for p in plist
+             if p.get("precipitation_probability_max") is not None),
+            default=None
+        )
+
+        # Gust merge
+        gust_kph_max = max(
+            (p.get("wind_gust_kph") for p in plist if p.get("wind_gust_kph") is not None),
+            default=None
+        )
+        gust_mph_max = max(
+            (p.get("wind_gust_mph") for p in plist if p.get("wind_gust_mph") is not None),
+            default=None
+        )
+
+        # ------------------------------------------------------------
+        # Dewpoint merge (from hourly)
+        # ------------------------------------------------------------
+        dewpoints = [
+            h.get("dewpoint_c")
+            for h in hourly
+            if h.get("dewpoint_c") is not None and h["time"][:10] == d
+        ]
+
+        if dewpoints:
+            dewpoint_c = round(sum(dewpoints) / len(dewpoints), 1)
+            dewpoint_f = round(dewpoint_c * 9/5 + 32, 1)
+        else:
+            dewpoint_c = None
+            dewpoint_f = None
+
+        # ------------------------------------------------------------
+        # Humidity merge (from hourly)
+        # ------------------------------------------------------------
+        humidities = [
+            h.get("humidity")
+            for h in hourly
+            if h.get("humidity") is not None and h["time"][:10] == d
+        ]
+
+        humidity = round(sum(humidities) / len(humidities), 1) if humidities else None
+
+        # Feels-like merge
+        feels = [p.get("feels_like_max_c") for p in plist if p.get("feels_like_max_c") is not None]
+        feels_like_max_c = round(max(feels), 1) if feels else None
+        feels_like_max_f = round(feels_like_max_c * 9/5 + 32, 1) if feels_like_max_c is not None else None
+
+        feels_min = [p.get("feels_like_min_c") for p in plist if p.get("feels_like_min_c") is not None]
+        feels_like_min_c = round(min(feels_min), 1) if feels_min else None
+        feels_like_min_f = round(feels_like_min_c * 9/5 + 32, 1) if feels_like_min_c is not None else None
+
+        # Source from max-feels period
+        feels_like_source = None
+        if feels:
+            max_val = max(feels)
+            for p in plist:
+                if p.get("feels_like_max_c") == max_val:
+                    feels_like_source = p.get("feels_like_source")
+                    break
+
+        # Choose daytime period if available
+        daytime = None
+        for p in plist:
+            icon = p.get("icon", "")
+            if "day" in icon:
+                daytime = p
+                break
+
+        if daytime is None:
+            daytime = plist[0]
+
+        # Build merged daily record
+        merged.append({
+            "date": d,
+            "sunrise": daytime.get("sunrise"),
+            "sunset": daytime.get("sunset"),
+
+            "condition": daytime.get("condition"),
+            "context": daytime.get("context"),
+            "icon": daytime.get("icon"),
+
+            "temp_max_c": temp_max_c,
+            "temp_min_c": temp_min_c,
+            "temp_max_f": ceil1(convert_temperature(temp_max_c, "C", "F")),
+            "temp_min_f": ceil1(convert_temperature(temp_min_c, "C", "F")),
+
+            "precip_mm": daytime.get("precip_mm", 0.0),
+            "precip_in": daytime.get("precip_in", 0.0),
+            "precipitation_probability_max": precip_prob,
+
+            "wind_kph_max": wind_kph_max,
+            "wind_mph_max": ceil1(convert_speed(wind_kph_max, "kph", "mph")),
+            "wind_gust_kph_max": gust_kph_max,
+            "wind_gust_mph_max": gust_mph_max,
+
+            "dewpoint_c": dewpoint_c,
+            "dewpoint_f": dewpoint_f,
+            "humidity": humidity,
+
+            "index": daytime.get("index"),
+
+            "feels_like_max_c": feels_like_max_c,
+            "feels_like_max_f": feels_like_max_f,
+            "feels_like_min_c": feels_like_min_c,
+            "feels_like_min_f": feels_like_min_f,
+            "feels_like_source": feels_like_source,
+        })
+
+    # Sort + today-first logic unchanged
+    merged.sort(key=lambda x: x["date"])
+    today_str = date.today().isoformat()
+    today_entry = next((m for m in merged if m["date"] == today_str), None)
+    if today_entry:
+        merged.remove(today_entry)
+        merged.insert(0, today_entry)
+
+    return merged
+def reorder_hourly_current_first(hours: list, tz: str):
+    """
+    Ensure the first hourly entry is always the current hour.
+    """
+    if not hours:
+        return hours
+
+    # Current local hour (rounded down)
+    now = datetime.now().astimezone().replace(minute=0, second=0, microsecond=0)
+    now_iso = now.isoformat()
+
+    # Find the index of the matching hour block
+    idx = None
+    for i, h in enumerate(hours):
+        t = datetime.fromisoformat(h["time"])
+        if t.hour == now.hour and t.date() == now.date():
+            idx = i
+            break
+
+    # If found, rotate list
+    if idx is not None:
+        return hours[idx:] + hours[:idx]
+
+    # Otherwise leave unchanged
+    return hours
+def normalize_gusts_kph_mph(gust_value):
+    """
+    Normalize gust values into kph and mph.
+    gust_value may be:
+        - None
+        - numeric (Open-Meteo, kph)
+        - string like '25 mph' (NWS)
+    """
+    if gust_value is None:
+        return None, None
+
+    # NWS: string like "25 mph"
+    if isinstance(gust_value, str):
+        try:
+            mph = float(gust_value.split()[0])
+            kph = mph * 1.60934
+            return kph, mph
+        except Exception:
+            return None, None
+
+    # Open-Meteo: numeric kph
+    if isinstance(gust_value, (int, float)):
+        kph = float(gust_value)
+        mph = kph / 1.60934
+        return kph, mph
+
+    return None, None

@@ -190,10 +190,11 @@ def main():
         project_root = Path(__file__).resolve().parent.parent
 
     logger.info(f"Scanning project root: {project_root}")
+    print(f"Scanning project root: {project_root}, {args.preview}")
 
     updated_files = walk_project(project_root, args.preview)
     summary = build_summary(updated_files, args.preview)
-
+    print(summary)
     logger.info(summary)
 
 

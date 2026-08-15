@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-14
+ Modified: 2026-08-15
  File: PythonTools/weather/providers/open_meteo.py
  Version: 1.0.0
  Description: Module description here
@@ -16,10 +16,10 @@ import urllib.request
 
 from .builders import build_open_meteo_url
 from ..indexes import compute_indexes_from_fields
+from ..normalize import normalize_index_fields, normalize_gusts_kph_mph
 from ...datetime import parse_iso
 from ..registry import WEATHER_PROVIDERS
-from ..types import normalize_index_fields
-from ...utils import ceil1
+from ...utils.common import ceil1
 
 def fetch_hourly_open_meteo(lat, lon, timeout, meta):
     url = build_open_meteo_url(lat, lon, "hourly")
@@ -33,11 +33,24 @@ def fetch_hourly_open_meteo(lat, lon, timeout, meta):
 
     result = []
     for i, t in enumerate(hourly["time"]):
+        gust_raw = hourly["windgusts_10m"][i]
+        gust_kph, gust_mph = normalize_gusts_kph_mph(gust_raw)
+
         entry = {
             "time": t,
             "temperature_c": hourly["temperature_2m"][i],
+            "apparent_temperature_c": hourly["apparent_temperature"][i],
+            "dewpoint_c": hourly["dewpoint_2m"][i],
+            "humidity": hourly["relativehumidity_2m"][i],
+            "pressure_msl": hourly["pressure_msl"][i],
+            "visibility_m": hourly["visibility"][i],
+            "precip_mm": hourly["precipitation"][i],
+            "precipitation_probability": hourly["precipitation_probability"][i],
+            "cloudcover": hourly["cloudcover"][i],
             "wind_kph": hourly["windspeed_10m"][i],
-            "condition": hourly["weathercode"][i],   # WMO code
+            "wind_gust_kph": ceil1(gust_kph),
+            "wind_gust_mph": ceil1(gust_mph),
+            "condition": hourly["weathercode"][i],
             "sunrise": sunrise,
             "sunset": sunset,
         }
@@ -47,9 +60,10 @@ def fetch_hourly_open_meteo(lat, lon, timeout, meta):
             dewpoint_c = hourly["dewpoint_2m"][i],
             rh = hourly["relativehumidity_2m"][i],
             wind_kph = hourly["windspeed_10m"][i],
-            pressure_hpa=hourly["pressure_msl"][i],
+            pressure_hpa = hourly["pressure_msl"][i],
         )
         entry["index"] = normalize_index_fields(indexes)
+
         result.append(entry)
 
     return {"hours": result}, url
@@ -148,7 +162,8 @@ def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
             wind_kph=wind_kph_max,
             pressure_hpa=pressure_hpa
         )
-
+        gust_raw = h("windgusts_10m_max")
+        gust_kph, gust_mph = normalize_gusts_kph_mph(gust_raw)
         days.append({
             "date": d,
             "sunrise": h("sunrise"),
@@ -159,6 +174,8 @@ def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
             "precip_mm": h("precipitation_sum"),
             "precipitation_probability_max": h("precipitation_probability_max"),
             "wind_kph_max": wind_kph_max,
+            "wind_gust_kph": ceil1(gust_kph),
+            "wind_gust_mph": ceil1(gust_mph),
 
             # Full index engine using NWS obs + Open-Meteo forecast
             "index": normalize_index_fields(indexes),

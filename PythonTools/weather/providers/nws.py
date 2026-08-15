@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-14
+ Modified: 2026-08-15
  File: PythonTools/weather/providers/nws.py
  Version: 1.0.0
  Description: Weather Provider NWS functions
@@ -20,8 +20,13 @@ from .builders import build_nws_url
 from ..codes import nws_text_to_wmo, map_icon, map_context
 from ...datetime import compute_sun_times, is_daylight
 from ..registry import WEATHER_PROVIDERS
-from ..indexes import convert_speed, convert_temperature, compute_feels_like, compute_indexes_from_fields
-from ..types import normalize_index_fields
+from ..indexes import (
+    convert_speed, 
+    convert_temperature, 
+    compute_feels_like, 
+    compute_indexes_from_fields,
+)
+from ..normalize import normalize_index_fields, normalize_gusts_kph_mph
 from ...units import haversine
 from ...utils import ceil1
 
@@ -62,7 +67,8 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
 
         wind_kph = ceil1(convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph"))
         wind_mph = ceil1(convert_speed(wind_kph, "kph", "mph"))
-
+        gust_raw = p.get("windGust")
+        gust_kph, gust_mph = normalize_gusts_kph_mph(gust_raw)
         #
         # Observation fallback (if forecastHourly missing values)
         #
@@ -128,6 +134,8 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
             "feels_like_c": ceil1(fl_c),
             "feels_like_f": ceil1(fl_f),
             "feels_like_source": fl_src,
+            "wind_gust_kph": gust_kph,
+            "wind_gust_mph": gust_mph,
         }
 
         normalized.append(result)
@@ -298,6 +306,8 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
 
         # RAW wind
         wind_kph_max_raw = convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph")
+        gust_raw = p.get("windGust")
+        gust_kph, gust_mph = normalize_gusts_kph_mph(gust_raw)
 
         # RAW humidity from period
         rh_period_raw = p.get("relativeHumidity", {}).get("value")
@@ -367,6 +377,8 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
 
             "wind_kph_max": ceil1(wind_kph_max_raw),
             "wind_mph_max": ceil1(convert_speed(wind_kph_max_raw, "kph", "mph")),
+            "wind_gust_kph": gust_kph,
+            "wind_gust_mph": gust_mph,
 
             "dewpoint_c": ceil1(dewpoint_c_raw),
             "dewpoint_f": ceil1(convert_temperature(dewpoint_c_raw, "C", "F")) if dewpoint_c_raw else None,
