@@ -5,14 +5,19 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-03
- Modified: 2026-08-08
+ Modified: 2026-08-16
  File: PythonTools/datetime/__init__.py
  Version: 1.0.0
  Description: Module description here
 """
 
 from .parse import parse_iso
-from .format import current_timestamp, format_age
+from .format import (
+    current_timestamp, 
+    format_age, 
+    normalize_ts,
+    normalize_ts_local,
+)
 from .suntimes import (
     get_timezone, 
     compute_sun_times, 
@@ -48,4 +53,6 @@ __all__ = [
     "is_civil_twilight",
     "is_dark",
     "is_daylight",
+    "normalize_ts",
+    "normalize_ts_local",
 ]

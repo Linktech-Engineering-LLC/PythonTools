@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-09
+ Modified: 2026-08-16
  File: PythonTools/weather/codes.py
  Version: 1.0.0
  Description: Weather Code Mapping utilities
@@ -302,14 +302,11 @@ def normalize_nws_text(text: str | None) -> str:
 
     # Title-case to match WEATHER_CODES contexts
     return t.title()
-
 def map_context(code: int | None) -> str:
     """Return human-readable context for a WMO weather code."""
     if code is None or code not in WEATHER_CODES:
         return "Unknown"
     return WEATHER_CODES[code]["canonical"]
-
-
 def map_icon(code: int | None, is_day: bool) -> str:
     """Return the correct icon filename for a WMO weather code."""
     if code is None or code not in WEATHER_CODES:

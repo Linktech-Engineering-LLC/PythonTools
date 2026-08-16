@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-15
+ Modified: 2026-08-16
  File: PythonTools/weather/providers/nws.py
  Version: 1.0.0
  Description: Weather Provider NWS functions
@@ -18,7 +18,7 @@ from typing import Any, Dict
 
 from .builders import build_nws_url
 from ..codes import nws_text_to_wmo, map_icon, map_context
-from ...datetime import compute_sun_times, is_daylight
+from ...datetime import compute_sun_times, is_daylight, normalize_ts_local
 from ..registry import WEATHER_PROVIDERS
 from ..indexes import (
     convert_speed, 
@@ -26,67 +26,108 @@ from ..indexes import (
     compute_feels_like, 
     compute_indexes_from_fields,
 )
-from ..normalize import normalize_index_fields, normalize_gusts_kph_mph
-from ...units import haversine
+from ..normalize import (
+    normalize_index_fields, 
+    normalize_gusts_kph_mph,
+    normalize_gridpoint_precip,
+    infer_precip_type,
+    infer_precip_components,
+)
+from .open_meteo import fetch_weekly_open_meteo, fetch_hourly_open_meteo
+from ...units import haversine, convert_distance
 from ...utils import ceil1
 
 def fetch_hourly_nws(lat, lon, timeout, meta):
     #
-    # Use cached observation URL if available
+    # 0. Cached observation fallback
     #
     obs = meta.get("cached_obs")
-    obs_url = meta.get("cached_obs_url")  # you should store this in main dispatcher
+    obs_url = meta.get("cached_obs_url")
 
     #
-    # Fetch hourly forecast
+    # 1. Fetch NWS hourly forecast
     #
     url = build_nws_url(lat, lon, "hourly")
     raw = requests.get(url, timeout=timeout).json()
-
     periods = raw["properties"]["periods"]
+
+    #
+    # 2. Fetch Open‑Meteo hourly (precipitation + weathercode)
+    #
+    om_hourly, om_url = fetch_hourly_open_meteo(lat, lon, timeout, meta)
+    # om_hourly["hours"] contains:
+    #   time, precipitation, precipitation_probability, weathercode, etc.
+
+    om_by_time = {
+        normalize_ts_local(h["time"], meta["timezone"]): h
+        for h in om_hourly.get("hours", [])
+    }
 
     normalized = []
 
+    #
+    # 3. Merge NWS hourly + Open‑Meteo hourly precipitation
+    #
     for p in periods:
         start = p.get("startTime")
-        date_str = start.split("T")[0] if start else None
-        ct = datetime.fromisoformat(start) if start else datetime.now()
+        ct = datetime.fromisoformat(start)
+        date_str = start.split("T")[0]
+        date_obj = date.fromisoformat(date_str)
 
-        date_obj = date.fromisoformat(date_str) if date_str else None
         sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
         is_day = is_daylight(ct, sunrise, sunset)
 
         #
-        # Base fields from forecastHourly
+        # NWS hourly base fields
         #
         temp_c = ceil1(convert_temperature(p.get("temperature"), p.get("temperatureUnit"), "C"))
         temp_f = ceil1(convert_temperature(temp_c, "C", "F"))
 
-        dewpoint_c = ceil1(p.get("dewpoint", {}).get("value"))
-        rh = ceil1(p.get("relativeHumidity", {}).get("value"))
+        dewpoint_c = p.get("dewpoint", {}).get("value")
+        rh = p.get("relativeHumidity", {}).get("value")
+        precip_prob_nws = p.get("probabilityOfPrecipitation", {}).get("value")
+        precip_type_nws = infer_precip_type(nws_text_to_wmo(p.get("shortForecast")))
 
-        wind_kph = ceil1(convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph"))
-        wind_mph = ceil1(convert_speed(wind_kph, "kph", "mph"))
+        wind_kph = convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph")
+        wind_mph = convert_speed(wind_kph, "kph", "mph")
         gust_raw = p.get("windGust")
         gust_kph, gust_mph = normalize_gusts_kph_mph(gust_raw)
+
         #
-        # Observation fallback (if forecastHourly missing values)
+        # Observation fallback
         #
         if obs:
             if dewpoint_c is None:
-                dewpoint_c = ceil1(obs.get("dewpoint", {}).get("value"))
+                dewpoint_c = obs.get("dewpoint", {}).get("value")
 
             if rh is None:
-                rh = ceil1(obs.get("relativeHumidity", {}).get("value"))
+                rh = obs.get("relativeHumidity", {}).get("value")
 
             if wind_kph is None:
                 wind_mps_obs = obs.get("windSpeed", {}).get("value")
                 if wind_mps_obs is not None:
-                    wind_kph = ceil1(convert_speed(wind_mps_obs, "mps", "kph"))
-                    wind_mph = ceil1(convert_speed(wind_kph, "kph", "mph"))
+                    wind_kph = convert_speed(wind_mps_obs, "mps", "kph")
+                    wind_mph = convert_speed(wind_kph, "kph", "mph")
+
+        dewpoint_c = ceil1(dewpoint_c) if dewpoint_c is not None else None
+        rh = ceil1(rh) if rh is not None else None
+        wind_kph = ceil1(wind_kph) if wind_kph is not None else None
+        wind_mph = ceil1(wind_mph) if wind_mph is not None else None
 
         #
-        # Full index set
+        # 4. Open‑Meteo hourly precipitation for this time
+        #
+        om = om_by_time.get(normalize_ts_local(start, meta["timezone"]), {})
+
+        precip_mm = om.get("precip_mm")
+        weathercode = om.get("condition")
+        precip_prob_om = om.get("precipitation_probability")
+
+        # infer rain/snow/ice components
+        components = infer_precip_components(weathercode, precip_mm)
+
+        #
+        # 5. Indexes
         #
         pressure_pa = obs.get("barometricPressure", {}).get("value") if obs else None
         pressure_hpa = pressure_pa / 100 if pressure_pa is not None else None
@@ -96,11 +137,11 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
             dewpoint_c=dewpoint_c,
             rh=rh,
             wind_kph=wind_kph,
-            pressure_hpa=pressure_hpa
+            pressure_hpa=pressure_hpa,
         )
 
         #
-        # Unified feels-like
+        # 6. Unified feels-like
         #
         fl_c, fl_f, fl_src = compute_feels_like(
             temp_c=temp_c,
@@ -110,17 +151,40 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
             is_day=is_day,
         )
 
+        #
+        # 7. Final merged hourly record
+        #
         result = {
             "time": start,
+
             "temperature_c": temp_c,
             "temperature_f": temp_f,
 
-            "dewpoint_c": ceil1(dewpoint_c),
-            "dewpoint_f": ceil1(convert_temperature(ceil1(dewpoint_c), "C", "F")) if dewpoint_c else None,
-            "humidity": ceil1(rh),
+            "dewpoint_c": dewpoint_c,
+            "dewpoint_f": ceil1(convert_temperature(dewpoint_c, "C", "F")) if dewpoint_c else None,
+            "humidity": rh,
 
-            "wind_kph": ceil1(wind_kph),
-            "wind_mph": ceil1(wind_mph),
+            #
+            # Open‑Meteo precipitation amounts
+            #
+            "precip_amount": precip_mm,
+            "precip_mm": precip_mm,
+            "precip_in": precip_mm / 25.4 if precip_mm is not None else None,
+
+            "rain_mm": components["rain_mm"],
+            "snow_mm": components["snow_mm"],
+            "ice_mm": components["ice_mm"],
+
+            #
+            # Precipitation probability + type
+            #
+            "precip_probability": precip_prob_nws or precip_prob_om,
+            "precip_type": precip_type_nws,
+
+            "wind_kph": wind_kph,
+            "wind_mph": wind_mph,
+            "wind_gust_kph": gust_kph,
+            "wind_gust_mph": gust_mph,
 
             "sunrise": sunrise,
             "sunset": sunset,
@@ -134,98 +198,118 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
             "feels_like_c": ceil1(fl_c),
             "feels_like_f": ceil1(fl_f),
             "feels_like_source": fl_src,
-            "wind_gust_kph": gust_kph,
-            "wind_gust_mph": gust_mph,
         }
 
         normalized.append(result)
 
-    #
-    # Return cached observation URL if available
-    #
     return {"hours": normalized}, (obs_url or url)
-def parse_nws_speed(value):
-    """
-    Extract the first numeric speed from NWS strings.
-    Examples:
-        "5 mph" → 5
-        "10 to 20 mph" → 10
-        "Calm" → None
-        "Light and variable" → None
-    """
-    if not value:
-        return None
-
-    parts = value.split()
-    try:
-        return float(parts[0])
-    except Exception:
-        return None
 def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]):
     headers = {"User-Agent": "NMS_Tools/1.0"}
 
     #
-    # 1. Try NWS observations/latest (full detail)
+    # 1. Try NWS observations/latest (real station data)
     #
     try:
         obs, obs_url, station_id = fetch_valid_nws_observation(lat, lon, timeout, meta)
-
-        if obs:
-            rc = normalize_nws_observation(obs, lat, lon, meta), obs_url
-            rc[0]["station_id"] = station_id
-            return rc
-
     except Exception:
-        # Observation unavailable → fallback to forecastHourly
-        pass
+        obs = None
+        obs_url = None
+        station_id = None
 
     #
-    # 2. Fallback: use forecastHourly
+    # 2. Fetch NWS forecastHourly (for context, precip probability, weathercode)
     #
-    url = build_nws_url(lat, lon, "current")
-    r = requests.get(url, headers=headers, timeout=timeout)
-    r.raise_for_status()
+    url_fc = build_nws_url(lat, lon, "current")
+    r_fc = requests.get(url_fc, headers=headers, timeout=timeout)
+    r_fc.raise_for_status()
 
-    data = r.json()
-    periods = data.get("properties", {}).get("periods", [])
+    data_fc = r_fc.json()
+    periods = data_fc.get("properties", {}).get("periods", [])
+    fc = periods[0] if periods else None
 
-    if not periods:
-        return None, url
+    #
+    # 3. Fetch Open‑Meteo hourly (for precip amount, visibility, cloud cover)
+    #
+    om_hourly, om_url = fetch_hourly_open_meteo(lat, lon, timeout, meta)
+    tz = meta["timezone"]
 
-    p = periods[0]
+    # Normalize OM timestamps to local time
+    om_by_time = {
+        normalize_ts_local(h["time"], tz): h
+        for h in om_hourly.get("hours", [])
+    }
 
-    # Raw values (NO rounding here)
-    temp_c_raw = convert_temperature(p["temperature"], p["temperatureUnit"], "C")
-    dewpoint_c_raw = p.get("dewpoint", {}).get("value")
-    rh_raw = p.get("relativeHumidity", {}).get("value")
-    wind_mps_raw = parse_nws_speed(p.get("windSpeed"))
+    # Determine the timestamp we want to match
+    if fc:
+        start = fc.get("startTime")
+    elif obs:
+        start = obs.get("timestamp")
+    else:
+        return None, url_fc
 
-    # Observation fallback
-    obs = meta.get("cached_obs")
+    om = om_by_time.get(normalize_ts_local(start, tz), {})
+
+    #
+    # 4. Extract fields from NWS observation (if available)
+    #
     if obs:
+        temp_c_raw = obs.get("temperature", {}).get("value")
+        dewpoint_c_raw = obs.get("dewpoint", {}).get("value")
+        rh_raw = obs.get("relativeHumidity", {}).get("value")
+        wind_mps_raw = obs.get("windSpeed", {}).get("value")
+        pressure_pa = obs.get("barometricPressure", {}).get("value")
+        precip_mm_raw = obs.get("precipitationLastHour", {}).get("value")
+    else:
+        temp_c_raw = None
+        dewpoint_c_raw = None
+        rh_raw = None
+        wind_mps_raw = None
+        pressure_pa = None
+        precip_mm_raw = None
+
+    #
+    # 5. Fill missing fields using forecastHourly
+    #
+    if fc:
+        if temp_c_raw is None:
+            temp_c_raw = convert_temperature(fc["temperature"], fc["temperatureUnit"], "C")
+
         if dewpoint_c_raw is None:
-            dewpoint_c_raw = obs.get("dewpoint", {}).get("value")
+            dewpoint_c_raw = fc.get("dewpoint", {}).get("value")
 
         if rh_raw is None:
-            rh_raw = obs.get("relativeHumidity", {}).get("value")
+            rh_raw = fc.get("relativeHumidity", {}).get("value")
 
         if wind_mps_raw is None:
-            wind_mps_raw = obs.get("windSpeed", {}).get("value")
+            wind_mps_raw = parse_nws_speed(fc.get("windSpeed"))
 
-    # Convert wind
-    wind_kph_raw = convert_speed(wind_mps_raw, "mps", "kph")
-    wind_mph_raw = convert_speed(wind_kph_raw, "kph", "mph")
+    #
+    # 6. Fill missing precipitation using Open‑Meteo
+    #
+    if precip_mm_raw is None:
+        precip_mm_raw = om.get("precip_mm")
 
-    # Compute sunrise/sunset
-    start = p.get("startTime")
+    precip_in_raw = precip_mm_raw / 25.4 if precip_mm_raw is not None else None
+
+    #
+    # 7. Convert wind
+    #
+    wind_kph_raw = convert_speed(wind_mps_raw, "mps", "kph") if wind_mps_raw is not None else None
+    wind_mph_raw = convert_speed(wind_kph_raw, "kph", "mph") if wind_kph_raw is not None else None
+
+    #
+    # 8. Sunrise/sunset
+    #
     date_str = start.split("T")[0]
     date_obj = date.fromisoformat(date_str)
-    sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
+    sunrise, sunset = compute_sun_times(lat, lon, date_obj, tz)
     is_day = is_daylight(datetime.fromisoformat(start), sunrise, sunset)
 
-    # Compute indexes (RAW values)
-    pressure_pa = obs.get("barometricPressure", {}).get("value") if obs else None
+    #
+    # 9. Indexes (RAW)
+    #
     pressure_hpa = pressure_pa / 100 if pressure_pa is not None else None
+
     indexes_raw = compute_indexes_from_fields(
         temp_c=temp_c_raw,
         dewpoint_c=dewpoint_c_raw,
@@ -234,7 +318,9 @@ def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]
         pressure_hpa=pressure_hpa,
     )
 
-    # Unified feels-like (RAW values)
+    #
+    # 10. Feels-like (RAW)
+    #
     fl_c_raw, fl_f_raw, fl_src = compute_feels_like(
         temp_c=temp_c_raw,
         dewpoint_c=dewpoint_c_raw,
@@ -243,32 +329,67 @@ def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]
         is_day=is_day,
     )
 
-    # Presentation layer (CEILING ROUNDING)
+    #
+    # 11. Weather code + context from forecastHourly
+    #
+    if fc:
+        wmo = nws_text_to_wmo(fc.get("shortForecast"))
+    else:
+        wmo = None
+
+    #
+    # 12. Final merged current record
+    #
     result = {
         "time": start,
+
         "temperature_c": ceil1(temp_c_raw),
         "temperature_f": ceil1(convert_temperature(temp_c_raw, "C", "F")),
-        "wind_kph": ceil1(wind_kph_raw),
-        "wind_mph": ceil1(wind_mph_raw),
-        "sunrise": sunrise,
-        "sunset": sunset,
-        "condition": nws_text_to_wmo(p.get("shortForecast")),
-        "context": map_context(nws_text_to_wmo(p.get("shortForecast"))),
-        "icon": map_icon(nws_text_to_wmo(p.get("shortForecast")), is_day),
 
         "dewpoint_c": ceil1(dewpoint_c_raw),
         "dewpoint_f": ceil1(convert_temperature(dewpoint_c_raw, "C", "F")) if dewpoint_c_raw else None,
-        "humidity": rh_raw,  # humidity should NOT be rounded
 
+        "humidity": ceil1(rh_raw),
+
+        "wind_kph": ceil1(wind_kph_raw),
+        "wind_mph": ceil1(wind_mph_raw),
+
+        "sunrise": sunrise,
+        "sunset": sunset,
+
+        "condition": wmo,
+        "context": map_context(wmo),
+        "icon": map_icon(wmo, is_day),
+
+        #
+        # Precipitation (merged)
+        #
+        "precip_mm": ceil1(precip_mm_raw) if precip_mm_raw is not None else None,
+        "precip_in": ceil1(precip_in_raw) if precip_in_raw is not None else None,
+        "precip_probability": fc.get("probabilityOfPrecipitation", {}).get("value") if fc else None,
+        "precip_type": infer_precip_type(wmo),
+
+        #
+        # Indexes
+        #
         "index": normalize_index_fields(indexes_raw),
 
+        #
+        # Feels-like
+        #
         "feels_like_c": ceil1(fl_c_raw),
         "feels_like_f": ceil1(fl_f_raw),
-        "feels_like_source": fl_src,  # NEVER ROUND THIS
+        "feels_like_source": fl_src,
     }
 
-    return result, url
+    if station_id:
+        result["station_id"] = station_id
+
+    return result, (obs_url or url_fc or om_url)
 def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]):
+    #
+    # 1. Fetch NWS weekly forecast (temperature, wind, humidity, etc.)
+    #
     url = build_nws_url(lat, lon, "weekly")
     headers = {"User-Agent": "NMS_Tools/1.0"}
 
@@ -278,7 +399,18 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
     data = r.json()
     periods = data.get("properties", {}).get("periods", [])
 
-    # Cached observation (raw values)
+    #
+    # 2. Fetch Open-Meteo weekly precipitation
+    #
+    om_precip, om_url = fetch_weekly_open_meteo(lat, lon, timeout, meta)
+    # om_precip = { "days": [ { "date": "...", "precip_mm": ..., "snow_mm": ..., ... }, ... ] }
+
+    # Convert Open-Meteo list into dict keyed by date
+    om_daily = {d["date"]: d for d in om_precip.get("days", [])}
+
+    #
+    # 3. Cached observation fallback (raw values)
+    #
     obs = meta.get("cached_obs")
     if obs:
         dewpoint_c_obs = obs.get("dewpoint", {}).get("value")
@@ -292,6 +424,9 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
 
     normalized = []
 
+    #
+    # 4. Merge NWS weekly + Open-Meteo precipitation
+    #
     for p in periods:
         start = p.get("startTime")
         date_str = start.split("T")[0]
@@ -301,29 +436,39 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
         sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
         is_day = is_daylight(ct, sunrise, sunset)
 
+        #
         # RAW temperature
+        #
         temp_c_raw = convert_temperature(p.get("temperature"), p.get("temperatureUnit"), "C")
 
+        #
         # RAW wind
+        #
         wind_kph_max_raw = convert_speed(parse_nws_speed(p.get("windSpeed")), "mph", "kph")
         gust_raw = p.get("windGust")
         gust_kph, gust_mph = normalize_gusts_kph_mph(gust_raw)
 
+        #
         # RAW humidity from period
+        #
         rh_period_raw = p.get("relativeHumidity", {}).get("value")
-
-        # Effective humidity (raw)
         rh_effective_raw = rh_period_raw if rh_period_raw is not None else rh_obs
 
+        #
         # RAW dewpoint
+        #
         dewpoint_c_raw = dewpoint_c_obs
 
+        #
         # RAW wind for feels-like
+        #
         wind_kph_raw = wind_obs_kph or wind_kph_max_raw
         pressure_pa = obs.get("barometricPressure", {}).get("value") if obs else None
         pressure_hpa = pressure_pa / 100 if pressure_pa is not None else None
 
+        #
         # Indexes (RAW values)
+        #
         idx_max_raw = compute_indexes_from_fields(
             temp_c=temp_c_raw,
             dewpoint_c=dewpoint_c_raw,
@@ -340,7 +485,9 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
             pressure_hpa=pressure_hpa,
         )
 
+        #
         # Unified feels-like (RAW values)
+        #
         fl_max_c_raw, fl_max_f_raw, fl_src = compute_feels_like(
             temp_c=temp_c_raw,
             dewpoint_c=dewpoint_c_raw,
@@ -357,43 +504,77 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
             is_day=is_day,
         )
 
+        #
+        # 5. Open-Meteo precipitation for this date
+        #
+        om = om_daily.get(date_str, {})
+
+        precip_mm = om.get("precip_mm")
+        snow_mm = om.get("snow_mm")
+        ice_mm = om.get("ice_mm")
+        precip_prob = om.get("precipitation_probability_max")
+        precip_type = om.get("precip_type")
+
+        #
         # Presentation layer (CEILING ROUNDING)
+        #
+        condition = nws_text_to_wmo(p.get("shortForecast"))
+
         result = {
             "date": date_str,
             "sunrise": sunrise,
             "sunset": sunset,
-            "condition": nws_text_to_wmo(p.get("shortForecast")),
-            "context": map_context(nws_text_to_wmo(p.get("shortForecast"))),
-            "icon": map_icon(nws_text_to_wmo(p.get("shortForecast")), is_day),
+            "condition": condition,
+            "context": map_context(condition),
+            "icon": map_icon(condition, is_day),
 
             "temp_max_c": ceil1(temp_c_raw),
             "temp_min_c": ceil1(temp_c_raw),
             "temp_max_f": ceil1(convert_temperature(temp_c_raw, "C", "F")),
             "temp_min_f": ceil1(convert_temperature(temp_c_raw, "C", "F")),
 
-            "precip_mm": 0.0,
-            "precip_in": 0.0,
-            "precipitation_probability_max": p.get("probabilityOfPrecipitation", {}).get("value"),
+            #
+            # Open-Meteo precipitation (rounded)
+            #
+            "precip_mm": ceil1(precip_mm) if precip_mm is not None else None,
+            "precip_in": ceil1(convert_distance(precip_mm, "mm", "in")) if precip_mm is not None else None,
 
+            "snow_mm": ceil1(snow_mm) if snow_mm is not None else None,
+            "snow_in": ceil1(convert_distance(snow_mm, "mm", "in")) if snow_mm is not None else None,
+
+            "ice_mm": ceil1(ice_mm) if ice_mm is not None else None,
+            "ice_in": ceil1(convert_distance(ice_mm, "mm", "in")) if ice_mm is not None else None,
+
+            "precipitation_probability_max": precip_prob,
+            "precip_type": precip_type,
+
+            #
+            # Wind
+            #
             "wind_kph_max": ceil1(wind_kph_max_raw),
             "wind_mph_max": ceil1(convert_speed(wind_kph_max_raw, "kph", "mph")),
             "wind_gust_kph": gust_kph,
             "wind_gust_mph": gust_mph,
 
+            #
+            # Dewpoint / humidity
+            #
             "dewpoint_c": ceil1(dewpoint_c_raw),
             "dewpoint_f": ceil1(convert_temperature(dewpoint_c_raw, "C", "F")) if dewpoint_c_raw else None,
+            "humidity": rh_effective_raw,  # MUST NOT be rounded
 
-            # humidity MUST NOT be rounded
-            "humidity": rh_effective_raw,
-
+            #
+            # Indexes
+            #
             "index": normalize_index_fields(idx_max_raw),
 
+            #
+            # Feels-like
+            #
             "feels_like_max_c": ceil1(fl_max_c_raw),
             "feels_like_max_f": ceil1(fl_max_f_raw),
             "feels_like_min_c": ceil1(fl_min_c_raw),
             "feels_like_min_f": ceil1(fl_min_f_raw),
-
-            # NEVER ROUND THIS
             "feels_like_source": fl_src,
         }
 
@@ -626,55 +807,12 @@ def is_valid_observation(obs: Dict[str, Any]) -> bool:
     if temp is None or temp < -60 or temp > 60:
         return False
 
-    # Must have wind speed
-    wind_mps = obs.get("windSpeed", {}).get("value") or 0
+    # Must have wind speed (0 is acceptable)
+    wind_mps = obs.get("windSpeed", {}).get("value")
+    if wind_mps is None:
+        return False
 
-    wind_kph = convert_speed(wind_mps, "mps", "kph") or 0
-
-    # Gust optional
-    gust_mps = obs.get("windGust", {}).get("value")
-    gust_kph = convert_speed(gust_mps, "mps", "kph") if gust_mps is not None else 0
-    gust_kph = 0 if gust_kph is None else gust_kph
-    
-    # Extreme wind sanity check
-    if wind_kph > 60 or gust_kph > 90:
-        severe_signals = 0
-
-        # humidity high
-        rh = obs.get("relativeHumidity", {}).get("value")
-        if rh is not None and rh > 85:
-            severe_signals += 1
-
-        # dewpoint high
-        dew = obs.get("dewpoint", {}).get("value")
-        if dew is not None and dew > 20:
-            severe_signals += 1
-
-        # pressure dropping
-        pres = obs.get("barometricPressure", {}).get("value")
-        if pres is not None and pres < 99000:
-            severe_signals += 1
-
-        # visibility low
-        vis = obs.get("visibility", {}).get("value")
-        if vis is not None and vis < 5000:
-            severe_signals += 1
-
-        # present weather codes (TS, RA, FC)
-        wx = obs.get("textDescription", "")
-        if any(code in wx for code in ["TS", "RA", "FC"]):
-            severe_signals += 1
-
-        # cloud layers (CB)
-        clouds = obs.get("cloudLayers", [])
-        if any(layer.get("amount") == "CB" for layer in clouds):
-            severe_signals += 1
-
-        # If no severe signals → broken station
-        if severe_signals == 0:
-            return False
-
-    # Dewpoint sanity check
+    # Optional sanity checks (non-fatal)
     dew = obs.get("dewpoint", {}).get("value")
     if dew is not None:
         if dew < -60 or dew > 40:
@@ -682,12 +820,10 @@ def is_valid_observation(obs: Dict[str, Any]) -> bool:
         if dew > temp:
             return False
 
-    # Humidity sanity check
     rh = obs.get("relativeHumidity", {}).get("value")
     if rh is not None and (rh < 0 or rh > 100):
         return False
 
-    # Pressure sanity check
     pres = obs.get("barometricPressure", {}).get("value")
     if pres is not None and (pres < 80000 or pres > 110000):
         return False
@@ -707,3 +843,68 @@ def fetch_observation_for_date(lat, lon, target_date, timeout, meta):
         return obs
 
     return obs  # nearest available
+def fetch_gridpoint_nws(lat: float, lon: float, timeout: int, meta: dict):
+    """
+    Fetch NWS Gridpoint forecastGridData for precipitation amounts.
+    Requires meta to contain: office, gridX, gridY.
+    """
+
+    office = meta["office"]
+    gridX = meta["gridX"]
+    gridY = meta["gridY"]
+
+    url = f"https://api.weather.gov/gridpoints/{office}/{gridX},{gridY}/forecastGridData"
+    headers = {"User-Agent": "NMS_Tools/1.0"}
+
+    r = requests.get(url, headers=headers, timeout=timeout)
+    r.raise_for_status()
+
+    data = r.json().get("properties", {})
+
+    return {
+        "quant_precip": data.get("quantitativePrecipitation", {}).get("values", []),
+        "snowfall": data.get("snowfallAmount", {}).get("values", []),
+        "ice": data.get("iceAccumulation", {}).get("values", []),
+        "pop": data.get("probabilityOfPrecipitation", {}).get("values", []),
+        "weather": data.get("weather", {}).get("values", []),
+    }, url
+def parse_nws_speed(s: str | None) -> float | None:
+    """
+    Parse NWS windSpeed strings like:
+    - "7 mph"
+    - "10 to 15 mph"
+    - "Calm"
+    - "Light"
+    - "Variable"
+    - None
+    Returns speed in mph (float) or None.
+    """
+
+    if not s:
+        return None
+
+    s = s.strip().lower()
+
+    # Calm / Light / Variable → treat as 0 mph
+    if s in ("calm", "light", "variable"):
+        return 0.0
+
+    # Range: "10 to 15 mph"
+    if "to" in s:
+        parts = s.replace("mph", "").strip().split("to")
+        try:
+            low = float(parts[0].strip())
+            high = float(parts[1].strip())
+            return (low + high) / 2.0
+        except:
+            return None
+
+    # Single value: "7 mph"
+    if "mph" in s:
+        try:
+            return float(s.replace("mph", "").strip())
+        except:
+            return None
+
+    # Unknown format
+    return None

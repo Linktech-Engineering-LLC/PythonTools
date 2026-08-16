@@ -5,13 +5,12 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-14
- Modified: 2026-08-15
+ Modified: 2026-08-16
  File: PythonTools/weather/indexes.py
  Version: 1.0.0
  Description: Weather Index Utilities
 """
 
-from datetime import date, datetime
 from math import exp, atan
 from typing import Optional, Dict, Any
 

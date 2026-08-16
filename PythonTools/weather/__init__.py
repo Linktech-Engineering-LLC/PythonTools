@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-15
+ Modified: 2026-08-16
  File: PythonTools/weather/__init__.py
  Version: 1.0.0
  Description: Module description here
@@ -19,9 +19,13 @@ from .normalize import (
     merge_daily_periods,
     reorder_hourly_current_first,
     normalize_gusts_kph_mph,
+    normalize_gridpoint_precip,
+    infer_precip_type,
+    map_precipitation,
+    infer_precip_components,
 )
 from .registry import WEATHER_PROVIDERS
-from .types import WeatherIndexes
+from .types import WeatherIndexes, Precipitation
 from .indexes import (
     compute_feels_like,
     compute_heat_index,

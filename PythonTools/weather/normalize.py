@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-15
+ Modified: 2026-08-16
  File: PythonTools/weather/normalize.py
  Version: 1.0.0
  Description: Weather Normalization and Enrichment Utilities
@@ -16,6 +16,7 @@ from typing import Any, Dict
 
 from .codes import WEATHER_CODES
 from ..datetime import ensure_dt
+from .types import Precipitation
 from ..units import convert_temperature, convert_speed, convert_distance,convert_pressure
 from ..utils.common import ceil1
 
@@ -423,3 +424,147 @@ def normalize_gusts_kph_mph(gust_value):
         return kph, mph
 
     return None, None
+def infer_precip_type(wmo_code: int | None) -> str | None:
+    if wmo_code is None:
+        return None
+
+    match wmo_code:
+        case code if 60 <= code <= 69:
+            return "rain"
+        case code if 70 <= code <= 79:
+            return "snow"
+        case code if 80 <= code <= 99:
+            return "showers"
+        case code if 50 <= code <= 59:
+            return "drizzle"
+        case code if 10 <= code <= 19:
+            return "fog"
+        case _:
+            return "none"
+def map_precipitation(data: dict, mode: str) -> Precipitation:
+    match mode:
+        case "current":
+            return Precipitation(
+                precip_amount=data.get("precip_mm"),
+                precip_probability=data.get("precip_probability"),
+                precip_type=data.get("precip_type"),
+
+                precip_total=data.get("precip_mm"),
+                precip_probability_max=data.get("precip_probability"),
+                rain_total=data.get("rain_mm"),
+                snow_total=data.get("snow_mm"),
+                ice_total=data.get("ice_mm"),
+            )
+
+        case "hourly":
+            return Precipitation(
+                hourly_precip_amount=data.get("precip_amount"),
+                hourly_precip_probability=data.get("precip_probability"),
+                hourly_precip_type=data.get("precip_type"),
+
+                precip_probability_max=data.get("precip_probability"),
+            )
+
+        case "weekly":
+            return Precipitation(
+                precip_amount=data.get("precip_mm"),
+                precip_probability=data.get("precipitation_probability_max"),
+                precip_type=data.get("precip_type"),
+
+                precip_total=data.get("precip_mm"),
+                precip_probability_max=data.get("precipitation_probability_max"),
+
+                rain_total=data.get("rain_mm"),
+                snow_total=data.get("snow_mm"),
+                ice_total=data.get("ice_mm"),
+            )
+
+        case _:
+            return Precipitation()
+def normalize_gridpoint_precip(grid: dict) -> dict:
+    """
+    Convert hourly gridpoint precipitation into daily totals.
+    Returns dict keyed by date: { "YYYY-MM-DD": { ... } }
+    """
+
+    daily = {}
+
+    def add_value(series, key):
+        for entry in series:
+            vt = entry.get("validTime")
+            val = entry.get("value")
+            if vt is None or val is None:
+                continue
+
+            # validTime format: "2026-08-16T00:00:00+00:00/PT1H"
+            ts = vt.split("/")[0]
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            date_key = dt.date().isoformat()
+
+            daily.setdefault(date_key, {})
+            daily[date_key].setdefault(key, 0.0)
+            daily[date_key][key] += val
+
+    # Sum precipitation amounts
+    add_value(grid["quant_precip"], "rain_mm")
+    add_value(grid["snowfall"], "snow_mm")
+    add_value(grid["ice"], "ice_mm")
+
+    # Probability of precipitation (max per day)
+    for entry in grid["pop"]:
+        vt = entry.get("validTime")
+        val = entry.get("value")
+        if vt is None or val is None:
+            continue
+
+        ts = vt.split("/")[0]
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        date_key = dt.date().isoformat()
+
+        daily.setdefault(date_key, {})
+        daily[date_key]["precip_probability"] = max(
+            daily[date_key].get("precip_probability", 0),
+            val
+        )
+
+    # Precip type inference from weather codes
+    for entry in grid["weather"]:
+        vt = entry.get("validTime")
+        wx = entry.get("value", [])
+        if vt is None or not wx:
+            continue
+
+        ts = vt.split("/")[0]
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        date_key = dt.date().isoformat()
+
+        # weather codes are arrays of dicts
+        # each has "weather" and "intensity"
+        wmo_code = None
+        for w in wx:
+            if "weather" in w and w["weather"]:
+                wmo_code = w["weather"][0]  # first code
+                break
+
+        daily.setdefault(date_key, {})
+        daily[date_key]["precip_type"] = infer_precip_type(wmo_code)
+
+    return daily
+def infer_precip_components(wmo_code: int, precip_mm: float | None):
+    if precip_mm is None or precip_mm == 0:
+        return {"rain_mm": None, "snow_mm": None, "ice_mm": None}
+
+    rain_codes = {51, 53, 55, 61, 63, 65, 80, 81, 82}
+    snow_codes = {71, 73, 75, 77, 85, 86}
+    ice_codes  = {66, 67}
+
+    if wmo_code in rain_codes:
+        return {"rain_mm": precip_mm, "snow_mm": None, "ice_mm": None}
+
+    if wmo_code in snow_codes:
+        return {"rain_mm": None, "snow_mm": precip_mm, "ice_mm": None}
+
+    if wmo_code in ice_codes:
+        return {"rain_mm": None, "snow_mm": None, "ice_mm": precip_mm}
+
+    return {"rain_mm": None, "snow_mm": None, "ice_mm": None}

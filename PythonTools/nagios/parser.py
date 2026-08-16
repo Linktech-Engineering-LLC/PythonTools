@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-08-09
+ Modified: 2026-08-16
  File: PythonTools/nagios/parser.py
  Version: 1.0.0
  Description: Base parser for Nagios-compatible NMS_Tools checks.
@@ -105,6 +105,8 @@ class BaseNagiosParser():
                          help="Quiet mode (exit code only)")
         out.add_argument("--color", action="store_true",
                          help="Colorize the terminal display (json/verbose)")
+        out.add_argument("--output", metavar="FILE",
+                        help="write command output to FILE instead of stdout")
 
     def _add_shared_logging_flags(self):
         log = self.parser.add_argument_group("Logging")
