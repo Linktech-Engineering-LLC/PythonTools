@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-09
+ Modified: 2026-08-20
  File: PythonTools/weather/providers.py
  Version: 1.0.0
  Description: Module description here
@@ -14,10 +14,10 @@ Created: 2026-08-09
 WEATHER_PROVIDERS = {
     "open-meteo": {
         "base": "https://api.open-meteo.com/v1/forecast",
-        "supports": ["current", "hourly", "weekly"],
+        "supports": ["current", "hourly", "weekly", "full"],
     },
     "nws": {
         "base": "https://api.weather.gov",
-        "supports": ["current", "hourly", "weekly", "alerts"],
+        "supports": ["current", "hourly", "weekly", "full"],
     }
 }

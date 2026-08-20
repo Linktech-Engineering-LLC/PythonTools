@@ -5,20 +5,25 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-16
+ Modified: 2026-08-20
  File: PythonTools/weather/providers/nws.py
  Version: 1.0.0
  Description: Weather Provider NWS functions
 """
 
-#from astral import now
 import requests
 from datetime import date, datetime
 from typing import Any, Dict
 
-from .builders import build_nws_url
+from .builders import build_nws_url, build_nws_alerts_url
 from ..codes import nws_text_to_wmo, map_icon, map_context
-from ...datetime import compute_sun_times, is_daylight, normalize_ts_local
+from ...datetime import (
+    compute_sun_times, 
+    is_daylight, 
+    normalize_ts_local, 
+    moon_phase_info,
+    compute_moon_times
+)
 from ..registry import WEATHER_PROVIDERS
 from ..indexes import (
     convert_speed, 
@@ -29,7 +34,6 @@ from ..indexes import (
 from ..normalize import (
     normalize_index_fields, 
     normalize_gusts_kph_mph,
-    normalize_gridpoint_precip,
     infer_precip_type,
     infer_precip_components,
 )
@@ -73,7 +77,8 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
         ct = datetime.fromisoformat(start)
         date_str = start.split("T")[0]
         date_obj = date.fromisoformat(date_str)
-
+        moon = moon_phase_info(date_str)
+        moonrise, moonset = compute_moon_times(lat, lon, date_obj, meta["timezone"])
         sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
         is_day = is_daylight(ct, sunrise, sunset)
 
@@ -188,7 +193,11 @@ def fetch_hourly_nws(lat, lon, timeout, meta):
 
             "sunrise": sunrise,
             "sunset": sunset,
-
+            "moon_phase": moon["moon_phase"],
+            "moon_phase_code": moon["moon_phase_code"],
+            "moon_illumination": moon["moon_illumination"],
+            "moonrise": moonrise,
+            "moonset": moonset,
             "condition": nws_text_to_wmo(p.get("shortForecast")),
             "context": map_context(nws_text_to_wmo(p.get("shortForecast"))),
             "icon": map_icon(nws_text_to_wmo(p.get("shortForecast")), is_day),
@@ -303,6 +312,8 @@ def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]
     date_str = start.split("T")[0]
     date_obj = date.fromisoformat(date_str)
     sunrise, sunset = compute_sun_times(lat, lon, date_obj, tz)
+    moonrise, moonset = compute_moon_times(lat, lon, date_obj, meta["timezone"])
+    moon = moon_phase_info(date_str)
     is_day = is_daylight(datetime.fromisoformat(start), sunrise, sunset)
 
     #
@@ -356,7 +367,11 @@ def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]
 
         "sunrise": sunrise,
         "sunset": sunset,
-
+        "moon_phase": moon["moon_phase"],
+        "moon_phase_code": moon["moon_phase_code"],
+        "moon_illumination": moon["moon_illumination"],
+        "moonrise": moonrise,
+        "moonset": moonset,
         "condition": wmo,
         "context": map_context(wmo),
         "icon": map_icon(wmo, is_day),
@@ -432,6 +447,8 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
         date_str = start.split("T")[0]
         date_obj = date.fromisoformat(date_str)
         ct = datetime.fromisoformat(start)
+        moon = moon_phase_info(date_str)
+        moonrise, moonset = compute_moon_times(lat, lon, date_obj, meta["timezone"])
 
         sunrise, sunset = compute_sun_times(lat, lon, date_obj, meta["timezone"])
         is_day = is_daylight(ct, sunrise, sunset)
@@ -524,6 +541,11 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
             "date": date_str,
             "sunrise": sunrise,
             "sunset": sunset,
+            "moon_phase": moon["moon_phase"],
+            "moon_phase_code": moon["moon_phase_code"],
+            "moon_illumination": moon["moon_illumination"],
+            "moonrise": moonrise,
+            "moonset": moonset,
             "condition": condition,
             "context": map_context(condition),
             "icon": map_icon(condition, is_day),
@@ -581,8 +603,28 @@ def fetch_weekly_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any])
         normalized.append(result)
 
     return {"days": normalized}, url
-def fetch_full_nws(lat: float, lon: float, timeout: int, meta: dict):
-    pass
+def fetch_full_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]):
+    # 1. Fetch current
+    current, current_url = fetch_current_nws(lat, lon, timeout, meta)
+
+    # 2. Fetch hourly
+    hourly, hourly_url = fetch_hourly_nws(lat, lon, timeout, meta)
+
+    # 3. Fetch weekly
+    weekly, weekly_url = fetch_weekly_nws(lat, lon, timeout, meta)
+
+    # 4. Build unified provider block
+    return {
+        "current": current,
+        "hourly": hourly,
+        "weekly": weekly,
+        "provider": "nws",
+        "urls": {
+            "current": current_url,
+            "hourly": hourly_url,
+            "weekly": weekly_url
+        }
+    }
 def resolve_nws_meta(lat: float, lon: float) -> Dict[str, Any]:
     url = f"https://api.weather.gov/points/{lat},{lon}"
     headers = {"User-Agent": "NMS_Tools/1.0"}

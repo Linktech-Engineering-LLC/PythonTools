@@ -5,13 +5,13 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-12
+ Modified: 2026-08-20
  File: PythonTools/weather/providers/__init__.py
  Version: 1.0.0
  Description: Weather Provider Information
 """
 
-from .builders import build_open_meteo_url, build_nws_url
+from .builders import build_open_meteo_url, build_nws_url, build_nws_alerts_url
 from .nws import (
     fetch_current_nws, 
     fetch_full_nws, 
@@ -25,6 +25,7 @@ from .register import register_providers
 
 __all__ = [
     "build_nws_url",
+    "build_nws_alerts_url",
     "build_open_meteo_url",
     "fetch_weekly_open_meteo",
     "fetch_hourly_open_meteo",

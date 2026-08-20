@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-16
+ Modified: 2026-08-20
  File: PythonTools/weather/normalize.py
  Version: 1.0.0
  Description: Weather Normalization and Enrichment Utilities
@@ -325,13 +325,17 @@ def merge_daily_periods(days: list, hourly: list):
 
         if daytime is None:
             daytime = plist[0]
-
+        # Always take moonrise/moonset from the NWS daily record, not OM
         # Build merged daily record
         merged.append({
             "date": d,
             "sunrise": daytime.get("sunrise"),
             "sunset": daytime.get("sunset"),
-
+            "moon_phase": daytime.get("moon_phase"),
+            "moon_phase_code": daytime.get("moon_phase_code"),
+            "moon_illumination": daytime.get("moon_illumination"),
+            "moonrise": daytime.get("moonrise"),
+            "moonset": daytime.get("moonset"),
             "condition": daytime.get("condition"),
             "context": daytime.get("context"),
             "icon": daytime.get("icon"),

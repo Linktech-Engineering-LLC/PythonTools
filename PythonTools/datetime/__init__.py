@@ -5,34 +5,37 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-03
- Modified: 2026-08-16
+ Modified: 2026-08-20
  File: PythonTools/datetime/__init__.py
  Version: 1.0.0
  Description: Module description here
 """
 
-from .parse import parse_iso
 from .format import (
     current_timestamp, 
-    format_age, 
-    normalize_ts,
-    normalize_ts_local,
-)
-from .suntimes import (
-    get_timezone, 
-    compute_sun_times, 
     ensure_dt,
-    compute_golden_blue_hours,
-    compute_moon_illumination,
-    compute_moon_phase,
-    compute_moon_position,
-    compute_moon_times,
-    compute_solar_noon,
-    compute_sun_position,
-    compute_twilight,
+    format_age, 
+    get_timezone, 
     is_civil_twilight,
     is_dark,
     is_daylight,
+    normalize_ts,
+    normalize_ts_local,
+    parse_iso,
+)
+from .moontimes import (
+    moon_phase_info, 
+    compute_moon_illumination,
+    compute_moon_phase,
+    compute_moon_position,
+    compute_moon_times
+)
+from .suntimes import (
+    compute_sun_times, 
+    compute_golden_blue_hours,
+    compute_solar_noon,
+    compute_sun_position,
+    compute_twilight,
 )
 
 __all__ = [
@@ -55,4 +58,6 @@ __all__ = [
     "is_daylight",
     "normalize_ts",
     "normalize_ts_local",
+    "moon_phase_info",
+    "compute_moon_times",
 ]

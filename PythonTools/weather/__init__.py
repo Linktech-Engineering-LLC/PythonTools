@@ -5,12 +5,13 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-16
+ Modified: 2026-08-20
  File: PythonTools/weather/__init__.py
  Version: 1.0.0
  Description: Module description here
 """
 
+from .alerts import normalize_alerts, fetch_cached_alerts
 from .codes import WEATHER_CODES, map_context, map_icon
 from .formatters import fmt_clouds, fmt_precip, fmt_temp, fmt_wind
 from .normalize import (
@@ -53,6 +54,8 @@ __all__ = [
     "compute_feels_like",
     "compute_indexes_from_fields",
     "normalize_index_fields",
+    "fetch_cached_alerts",
+    "normalize_alerts",
     "merge_daily_periods",
     "reorder_hourly_current_first",
 ]

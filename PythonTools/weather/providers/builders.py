@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-16
+ Modified: 2026-08-20
  File: PythonTools/weather/providers/builders.py
  Version: 1.0.0
  Description: Module description here
@@ -37,6 +37,8 @@ def build_nws_url(lat: float, lon: float, mode: str) -> str:
 
         case _:
             raise ValueError(f"Unsupported mode for NWS: {mode}")
+def build_nws_alerts_url(lat: float, lon: float) -> str:
+    return f"https://api.weather.gov/alerts/active?point={lat},{lon}"
 def build_open_meteo_url(lat: float, lon: float, mode: str) -> str:
     base = WEATHER_PROVIDERS["open-meteo"]["base"]
 

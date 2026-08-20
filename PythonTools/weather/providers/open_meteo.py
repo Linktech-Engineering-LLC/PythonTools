@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-16
+ Modified: 2026-08-20
  File: PythonTools/weather/providers/open_meteo.py
  Version: 1.0.0
  Description: Module description here
@@ -13,15 +13,16 @@ Created: 2026-08-10
 
 import json
 import urllib.request
+from typing import Any, Dict
 
 from .builders import build_open_meteo_url
 from ..indexes import compute_indexes_from_fields
 from ..normalize import normalize_index_fields, normalize_gusts_kph_mph
-from ...datetime import parse_iso
+from ...datetime import parse_iso, moon_phase_info, compute_moon_times
 from ..registry import WEATHER_PROVIDERS
 from ...utils.common import ceil1
 
-def fetch_hourly_open_meteo(lat, lon, timeout, meta):
+def fetch_hourly_open_meteo(lat: float, lon: float, timeout: int, meta: Dict[str, Any]):
     url = build_open_meteo_url(lat, lon, "hourly")
 
     raw = json.loads(urllib.request.urlopen(url, timeout=timeout).read())
@@ -35,9 +36,20 @@ def fetch_hourly_open_meteo(lat, lon, timeout, meta):
     for i, t in enumerate(hourly["time"]):
         gust_raw = hourly["windgusts_10m"][i]
         gust_kph, gust_mph = normalize_gusts_kph_mph(gust_raw)
+        date_obj = parse_iso(t).date()
+        moon = moon_phase_info(date_obj.isoformat())
+        moonrise, moonset = compute_moon_times(lat, lon, date_obj, meta["timezone"])
 
         entry = {
             "time": t,
+            "condition": hourly["weathercode"][i],
+            "sunrise": sunrise,
+            "sunset": sunset,
+            "moon_phase": moon["moon_phase"],
+            "moon_phase_code": moon["moon_phase_code"],
+            "moon_illumination": moon["moon_illumination"],
+            "moonrise": moonrise,
+            "moonset": moonset,
             "temperature_c": hourly["temperature_2m"][i],
             "apparent_temperature_c": hourly["apparent_temperature"][i],
             "dewpoint_c": hourly["dewpoint_2m"][i],
@@ -50,9 +62,6 @@ def fetch_hourly_open_meteo(lat, lon, timeout, meta):
             "wind_kph": hourly["windspeed_10m"][i],
             "wind_gust_kph": ceil1(gust_kph),
             "wind_gust_mph": ceil1(gust_mph),
-            "condition": hourly["weathercode"][i],
-            "sunrise": sunrise,
-            "sunset": sunset,
         }
 
         indexes = compute_indexes_from_fields(
@@ -67,7 +76,7 @@ def fetch_hourly_open_meteo(lat, lon, timeout, meta):
         result.append(entry)
 
     return {"hours": result}, url
-def fetch_current_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
+def fetch_current_open_meteo(lat: float, lon: float, timeout: int, meta: Dict[str, Any]):
     url = build_open_meteo_url(lat, lon, "current")
 
     with urllib.request.urlopen(url, timeout=timeout) as resp:
@@ -82,7 +91,9 @@ def fetch_current_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
 
     current_time = current.get("time")
     times = hourly.get("time", [])
-
+    date_obj = parse_iso(current_time).date()
+    moon = moon_phase_info(date_obj.isoformat())
+    moonrise, moonset = compute_moon_times(lat, lon, date_obj, meta["timezone"])
     # Align current time to nearest hourly index
     idx = 0
     if current_time and times:
@@ -100,6 +111,11 @@ def fetch_current_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
         "time": current_time,
         "sunrise": sunrise,
         "sunset": sunset,
+        "moon_phase": moon["moon_phase"],
+        "moon_phase_code": moon["moon_phase_code"],
+        "moon_illumination": moon["moon_illumination"],
+        "moonrise": moonrise,
+        "moonset": moonset,
         "temperature_c": current.get("temperature", h("temperature_2m")),
         "wind_kph": current.get("windspeed", h("windspeed_10m")),
         "wind_gust_kph": h("windgusts_10m"),
@@ -122,8 +138,7 @@ def fetch_current_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
     )
     result["index"] = normalize_index_fields(indexes)
     return result, url
-
-def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
+def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: Dict[str, Any]):
     url = build_open_meteo_url(lat, lon, "weekly")
 
     with urllib.request.urlopen(url, timeout=timeout) as resp:
@@ -152,6 +167,9 @@ def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
             if not arr or i >= len(arr):
                 return default
             return arr[i]
+        date_obj = parse_iso(d).date()
+        moon = moon_phase_info(date_obj.isoformat())
+        moonrise, moonset = compute_moon_times(lat, lon, date_obj, meta["timezone"])
 
         temp_max_c = h("temperature_2m_max")
         wind_kph_max = h("windspeed_10m_max")
@@ -168,6 +186,11 @@ def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
             "date": d,
             "sunrise": h("sunrise"),
             "sunset": h("sunset"),
+            "moon_phase": moon["moon_phase"],
+            "moon_phase_code": moon["moon_phase_code"],
+            "moon_illumination": moon["moon_illumination"],
+            "moonrise": moonrise,
+            "moonset": moonset,
             "condition": h("weathercode"),
             "temp_max_c": temp_max_c,
             "temp_min_c": h("temperature_2m_min"),
@@ -182,5 +205,25 @@ def fetch_weekly_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
         })
 
     return {"days": days}, url
-def fetch_full_open_meteo(lat: float, lon: float, timeout: int, meta: dict):
-    pass
+def fetch_full_open_meteo(lat: float, lon: float, timeout: int, meta: Dict[str, Any]):
+    # 1. Fetch current
+    current, current_url = fetch_current_open_meteo(lat, lon, timeout, meta)
+
+    # 2. Fetch hourly
+    hourly, hourly_url = fetch_hourly_open_meteo(lat, lon, timeout, meta)
+
+    # 3. Fetch weekly
+    weekly, weekly_url = fetch_weekly_open_meteo(lat, lon, timeout, meta)
+
+    # 4. Build unified provider block
+    return {
+        "current": current,
+        "hourly": hourly,
+        "weekly": weekly,
+        "provider": "open-meteo",
+        "urls": {
+            "current": current_url,
+            "hourly": hourly_url,
+            "weekly": weekly_url
+        }
+    }
