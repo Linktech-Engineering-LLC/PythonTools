@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-07-19
+ Modified: 2026-08-24
  File: PythonTools/nagios/mode.py
  Version: 1.0.0
  Description: Flag engine and mode detection for Nagios-compatible tools.
@@ -80,9 +80,9 @@ class Flags:
         f[FlagNames.QUIET] = args.quiet
 
         # Filter flags
-        f[FlagNames.REQUIRE_ALL] = args.require_all
-        f[FlagNames.REQUIRE_ANY] = args.require_any
-        f[FlagNames.FAIL_ONLY ] = args.fail_only
+        f[FlagNames.REQUIRE_ALL] = getattr(args, "require_all", False)
+        f[FlagNames.REQUIRE_ANY] = getattr(args, "require_any", False)
+        f[FlagNames.FAIL_ONLY ] = getattr(args, "fail_only", False)
 
         return f
 
