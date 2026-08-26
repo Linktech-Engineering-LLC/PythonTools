@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-11
- Modified: 2026-08-11
+ Modified: 2026-08-26
  File: PythonTools/location/resolve.py
  Version: 1.0.0
  Description: Module description here
@@ -14,6 +14,8 @@ Created: 2026-08-11
 # PythonTools/location/resolve.py
 
 import requests
+
+from ..location.providers import reverse_geocode
 from .normalize import normalize_city, normalize_country, normalize_state
 from .us_states import US_STATES
 from .providers import ProviderError, build_location_url
@@ -23,8 +25,7 @@ from .geo_types import LocationInfo, GeoPoint
 class LocationNotFoundError(Exception):
     pass
 
-def _try_latlon(query: str):
-    """Detect and parse lat/long."""
+def _try_latlon(query: str, timeout: float = 5.0):
     if "," not in query:
         return None
 
@@ -32,18 +33,23 @@ def _try_latlon(query: str):
     try:
         lat = float(parts[0].strip())
         lon = float(parts[1].strip())
-        return LocationInfo(
-            query=query,
-            provider="direct",
-            point=GeoPoint(lat, lon),
-            city=None,
-            state=None,
-            country=None,
-            zip=None,
-            url=None,
-        )
     except ValueError:
         return None
+
+    info = reverse_geocode(lat, lon, timeout)
+    if info:
+        return info
+
+    return LocationInfo(
+        query=query,
+        provider="direct",
+        point=GeoPoint(lat, lon),
+        city=None,
+        state=None,
+        country=None,
+        zip=None,
+        url=None,
+    )
 
 
 def _try_zip(country: str, zip_code: str, timeout: float):

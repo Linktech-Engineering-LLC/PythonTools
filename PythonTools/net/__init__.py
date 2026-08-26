@@ -3,6 +3,7 @@ from .collectors import (
     gather_snmp_interfaces,
     snmp_walk,
 )
+from .http import http_get_json
 from .normalize import (
     normalize_counters,
     normalize_duplex,

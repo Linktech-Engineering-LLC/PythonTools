@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-20
+ Modified: 2026-08-26
  File: PythonTools/weather/alerts.py
  Version: 1.0.0
  Description: Weather Alerts Module
@@ -66,7 +66,6 @@ def fetch_nws_alerts(lat, lon, timeout=10):
             return data.get("features", [])
     except Exception:
         return []
-
 def fetch_cached_alerts(lat, lon, timeout=10):
     """
     Fetch alerts with caching.
@@ -93,11 +92,9 @@ def fetch_cached_alerts(lat, lon, timeout=10):
     _ALERT_CACHE["data"] = normalized
 
     return normalized
-
 # ---------------------------------------------------------------------------
 # Categorization Rules
 # ---------------------------------------------------------------------------
-
 def categorize_alert(event_name):
     """
     Map NWS event names to unified categories.
@@ -149,12 +146,9 @@ def categorize_alert(event_name):
         return "uv"
 
     return "other"
-
-
 # ---------------------------------------------------------------------------
 # Normalize NWS Alerts
 # ---------------------------------------------------------------------------
-
 def normalize_alerts(raw_alerts):
     """
     Normalize NWS alert features into unified schema.
@@ -212,12 +206,9 @@ def normalize_alerts(raw_alerts):
         "count": len(normalized),
         "active": normalized
     }
-
-
 # ---------------------------------------------------------------------------
 # Unified Alert Enrichment
 # ---------------------------------------------------------------------------
-
 def add_alerts(provider, lat, lon, data, timeout=10):
     """
     Add alerts to the unified weather data.
@@ -236,15 +227,11 @@ def add_alerts(provider, lat, lon, data, timeout=10):
         }
         return data
 
-    raw = fetch_nws_alerts(lat, lon, timeout)
-    normalized = normalize_alerts(raw)
-    data["alerts"] = normalized
+    data["alerts"] = fetch_cached_alerts(lat, lon, timeout)
     return data
-
 # ---------------------------------------------------------------------------
 # Alert Icon Mapping
 # ---------------------------------------------------------------------------
-
 def alert_icon(category):
     """
     Map unified alert categories to icon filenames.
@@ -293,11 +280,10 @@ def alert_icon(category):
 
         case _:
             # Fallback
-            return "wi-alert.svg"
+            return "wi-day-lightning.svg"
 # ---------------------------------------------------------------------------
 # Alert Context Mapping
 # ---------------------------------------------------------------------------
-
 def alert_context(category, severity, event):
     """
     Produce a short human-readable context string for an alert.
@@ -359,7 +345,6 @@ def alert_context(category, severity, event):
 # ---------------------------------------------------------------------------
 # Severity Color Mapping
 # ---------------------------------------------------------------------------
-
 def alert_color(severity):
     """
     Map NWS severity levels to color codes.

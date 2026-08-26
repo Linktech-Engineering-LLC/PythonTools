@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-03
- Modified: 2026-08-11
+ Modified: 2026-08-26
  File: PythonTools/location/__init__.py
  Version: 1.0.0
  Description: 
@@ -43,7 +43,7 @@ from .normalize import (
     normalize_city
 )
 from .geo_types import GeoPoint, LocationInfo
-from .providers import LOCATION_PROVIDERS, ProviderError, build_location_url
+from .providers import LOCATION_PROVIDERS, ProviderError, build_location_url, reverse_geocode
 from .resolve import resolve_location, LocationInfo, LocationNotFoundError
 from .validate import validate_location_input
 

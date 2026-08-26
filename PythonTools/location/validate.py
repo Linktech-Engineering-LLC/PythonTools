@@ -5,91 +5,97 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-03
- Modified: 2026-08-03
+ Modified: 2026-08-26
  File: PythonTools/location/validate.py
  Version: 1.0.0
  Description: Module description here
 """
 import re
 
-from .normalize import normalize_city_name, US_STATES
+from .normalize import US_STATES
 
-def validate_location_input(location: str, country: str):
+def validate_location_input(location: str, country: str = "US", lat=None, lon=None):
     """
-    Validates location input in a globally safe, deterministic way.
+    Validates location input for check_weather and weather-demo.
 
-    Rules:
-      - US ZIP codes must be numeric (5-digit or ZIP+4).
-      - Non-US postal codes may be alphanumeric.
-      - US city lookups require a state (City, ST).
-      - Non-US city lookups may omit region.
+    Accepted formats:
+      - Explicit lat/lon via CLI (--lat --lon)
+      - Lat,Lon in the location string
+      - US ZIP (5-digit or ZIP+4)
+      - US City, ST or City, StateName
+      - Non-US postal codes (alphanumeric)
+      - Non-US city names (with or without region)
     """
 
-    loc = location.strip()
-    ctry = (country or "").strip().upper()
+    # -------------------------
+    # 0. If CLI lat/lon provided, skip validation
+    # -------------------------
+    if lat is not None and lon is not None:
+        return True
+
+    loc = (location or "").strip()
+    ctry = (country or "US").strip().upper()
 
     # -------------------------
-    # 1. Detect US ZIP codes
+    # 1. Lat/Lon inside location string
     # -------------------------
-    if ctry == "US":
-        # Valid US ZIP (5-digit) or ZIP+4
-        if re.fullmatch(r"\d{5}(-\d{4})?", loc):
-            return True  # valid US ZIP
-        # Otherwise treat as city/state and validate below
-
-    # -------------------------
-    # 2. Detect non-US postal codes
-    # -------------------------
-    # Postal codes outside the US are usually a single token with no commas.
-    if ctry != "US" and "," not in loc:
-        # Accept any alphanumeric postal code
-        # (e.g., "K1A 0B1", "SW1A 1AA", "1012 WX")
+    LAT_LON_PATTERN = r"^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$"
+    if re.fullmatch(LAT_LON_PATTERN, loc):
         return True
 
     # -------------------------
-    # 3. City/state parsing
+    # 2. US-specific validation
     # -------------------------
-    parts = [p.strip() for p in loc.split(",")]
-
-    # US-specific rule: city-only is invalid
     if ctry == "US":
-        if len(parts) == 1:
-            raise ValueError(
-                "U.S. city lookups require a state abbreviation "
-                "(e.g., 'Wichita, KS')."
-            )
 
-        if len(parts) == 2:
-            city = parts[0].strip()
-            state = parts[1].strip()
+        # ZIP or ZIP+4
+        ZIP_PATTERN = r"^\d{5}(-\d{4})?$"
+        if re.fullmatch(ZIP_PATTERN, loc):
+            return True
 
-            # Normalize city (St → Saint)
-            city = normalize_city_name(city)
+        # City, ST or City, StateName
+        if "," in loc:
+            parts = [p.strip() for p in loc.split(",")]
+            if len(parts) == 2:
+                city, state = parts
+                state_upper = state.upper()
+                state_lower = state.lower()
 
-            # Normalize state
-            state_upper = state.upper()
-            state_lower = state.lower()
+                # 2-letter code
+                if state_upper in US_STATES:
+                    return True
 
-            # 1. Check if it's a valid 2-letter code (case-insensitive)
-            if state_upper in US_STATES:
-                return True # valid
+                # full state name
+                STATE_NAME_TO_CODE = {v.lower(): k for k, v in US_STATES.items()}
+                if state_lower in STATE_NAME_TO_CODE:
+                    return True
 
-            # 2. Check if it's a full state name
-            STATE_NAME_TO_CODE = {v.lower(): k for k, v in US_STATES.items()}
-            if state_lower in STATE_NAME_TO_CODE:
-                return True # valid
-
-            raise ValueError(
-                f"Invalid U.S. state '{state}'. Expected a 2-letter code "
-                "or full state name (e.g., 'KS' or 'Kansas')."
-            )
+                raise ValueError(
+                    f"Invalid U.S. state '{state}'. Expected 2-letter code or full name."
+                )
 
         raise ValueError(
-            "Invalid U.S. location format. Expected 'City, ST' or a ZIP code."
+            "Invalid U.S. location. Expected ZIP, 'City, ST', or 'lat,lon'."
         )
 
     # -------------------------
-    # 4. Non-US city lookups
+    # 3. Non-US validation
     # -------------------------
-    # Allow city-only or city+region
-    return True
+    # Postal codes: alphanumeric, no comma
+    if "," not in loc:
+        if re.fullmatch(r"[A-Za-z0-9 ]+", loc):
+            return True
+
+    # City or City, Region
+    if "," in loc:
+        parts = [p.strip() for p in loc.split(",")]
+        if len(parts) in (1, 2):
+            return True
+
+    # -------------------------
+    # 4. Reject everything else
+    # -------------------------
+    raise ValueError(
+        f"Invalid location format for country '{country}'. "
+        "Expected postal code, city, or lat/lon."
+    )
