@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-11
- Modified: 2026-08-26
+ Modified: 2026-08-28
  File: PythonTools/location/resolve.py
  Version: 1.0.0
  Description: Module description here
@@ -35,6 +35,11 @@ def _try_latlon(query: str, timeout: float = 5.0):
         lon = float(parts[1].strip())
     except ValueError:
         return None
+    if not (-90 <= lat <= 90):
+        raise ValueError(f"Invalid latitude {lat}. Must be between -90 and 90.")
+
+    if not (-180 <= lon <= 180):
+        raise ValueError(f"Invalid longitude {lon}. Must be between -180 and 180.")
 
     info = reverse_geocode(lat, lon, timeout)
     if info:

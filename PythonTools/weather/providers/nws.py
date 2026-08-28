@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-20
+ Modified: 2026-08-28
  File: PythonTools/weather/providers/nws.py
  Version: 1.0.0
  Description: Weather Provider NWS functions
@@ -40,6 +40,8 @@ from ..normalize import (
 from .open_meteo import fetch_weekly_open_meteo, fetch_hourly_open_meteo
 from ...units import haversine, convert_distance
 from ...utils import ceil1
+class NoStationError(Exception):
+    pass
 
 def fetch_hourly_nws(lat, lon, timeout, meta):
     #
@@ -220,7 +222,18 @@ def fetch_current_nws(lat: float, lon: float, timeout: int, meta: Dict[str, Any]
     #
     try:
         obs, obs_url, station_id = fetch_valid_nws_observation(lat, lon, timeout, meta)
+
+    except NoStationError as e:
+        # Return a meaningful provider error object
+        return {
+            "status": "ERROR",
+            "message": str(e),
+            "location": f"{lat},{lon}",
+            "data": None
+        }
+
     except Exception:
+        # Generic fallback for unexpected errors
         obs = None
         obs_url = None
         station_id = None
@@ -836,6 +849,11 @@ def fetch_valid_nws_observation(lat: float, lon: float, timeout: int, meta: Dict
     # ------------------------------------------------------------
     # Nothing worked
     # ------------------------------------------------------------
+    raise NoStationError(
+        f"No NWS observation station found for {lat},{lon}. "
+        "This location is outside station coverage or all nearby stations "
+        "returned invalid observations."
+    )
     return None, None, None
 def is_valid_observation(obs: Dict[str, Any]) -> bool:
     """Return True if the observation is usable."""

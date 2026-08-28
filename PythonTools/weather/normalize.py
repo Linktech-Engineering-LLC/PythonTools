@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-20
+ Modified: 2026-08-28
  File: PythonTools/weather/normalize.py
  Version: 1.0.0
  Description: Weather Normalization and Enrichment Utilities
@@ -572,3 +572,17 @@ def infer_precip_components(wmo_code: int, precip_mm: float | None):
         return {"rain_mm": None, "snow_mm": None, "ice_mm": precip_mm}
 
     return {"rain_mm": None, "snow_mm": None, "ice_mm": None}
+def normalize_output(live):
+    return {
+        "provider": live.get("provider"),
+        "source": live.get("source", "Live API"),
+        "current": live.get("current", {}),
+        "hourly": live.get("hourly", {}),
+        "weekly": live.get("weekly", {}),
+        "alerts": live.get("alerts", {"count": 0, "active": []}),
+        "urls": live.get("urls", {}),
+        "cache_written": live.get("cache_written", False),
+        "cache_age": live.get("cache_age", "0s"),
+        "location": live.get("location"),
+        "meta": live.get("meta", {})
+    }

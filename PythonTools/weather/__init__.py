@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-20
+ Modified: 2026-08-28
  File: PythonTools/weather/__init__.py
  Version: 1.0.0
  Description: Module description here
@@ -19,6 +19,7 @@ from .normalize import (
     normalize_index_fields,
     merge_daily_periods,
     reorder_hourly_current_first,
+    normalize_output,
     normalize_gusts_kph_mph,
     normalize_gridpoint_precip,
     infer_precip_type,
@@ -58,4 +59,5 @@ __all__ = [
     "normalize_alerts",
     "merge_daily_periods",
     "reorder_hourly_current_first",
+    "normalize_output"
 ]

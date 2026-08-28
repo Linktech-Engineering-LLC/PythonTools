@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-26
+ Modified: 2026-08-28
  File: PythonTools/weather/alerts.py
  Version: 1.0.0
  Description: Weather Alerts Module
@@ -84,7 +84,7 @@ def fetch_cached_alerts(lat, lon, timeout=10):
     # Cache miss: fetch fresh alerts
     raw = fetch_nws_alerts(lat, lon, timeout)
     normalized = normalize_alerts(raw)
-
+    normalized["active"] = sort_alerts(normalized["active"])
     # Update cache
     _ALERT_CACHE["timestamp"] = now
     _ALERT_CACHE["lat"] = lat
@@ -260,7 +260,7 @@ def alert_icon(category):
 
         case "wind":
             # High Wind Warning / Wind Advisory
-            return "wi-strong-wind.svg"
+            return "wi-windy.svg"
 
         case "heat":
             # Excessive Heat Warning / Heat Advisory
@@ -372,3 +372,38 @@ def alert_color(severity):
             return "#1976d2"   # blue
         case _:
             return "#888888"   # fallback gray
+def sort_alerts(alerts):
+    # Severity priority (highest → lowest)
+    severity_rank = {
+        "Extreme": 4,
+        "Severe": 3,
+        "Moderate": 2,
+        "Minor": 1,
+        "Unknown": 0
+    }
+
+    # Urgency priority
+    urgency_rank = {
+        "Immediate": 3,
+        "Expected": 2,
+        "Future": 1,
+        "Unknown": 0
+    }
+
+    # Certainty priority
+    certainty_rank = {
+        "Observed": 3,
+        "Likely": 2,
+        "Possible": 1,
+        "Unknown": 0
+    }
+
+    return sorted(
+        alerts,
+        key=lambda a: (
+            -severity_rank.get(a["severity"], 0),
+            -urgency_rank.get(a["urgency"], 0),
+            -certainty_rank.get(a["certainty"], 0),
+            a["event"]  # tie-breaker
+        )
+    )
