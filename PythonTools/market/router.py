@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-07-18
+ Modified: 2026-08-29
  File: PythonTools/market/router.py
  Version: 1.0.0
  Description:
@@ -15,6 +15,8 @@
             results into QuoteResult objects, and prepares data for trend and history
             analysis. This module acts as the unified entry point for all market queries.
 """
+import math
+
 from ..finance.providers.registry import ProviderRegistry
 from . import QuoteResult
 from .symbols import normalize_commodity, normalize_forex
@@ -111,7 +113,16 @@ class MarketObjectEngine:
 
             if not result.is_error():
                 # Post-processing
-                result.history = extract_history(result)
+                history = extract_history(result)
+
+                # Sanitize history: remove NaN and non-numeric values
+                history = [
+                    x for x in history
+                    if isinstance(x, (int, float)) and not math.isnan(x)
+                ]
+
+                result.history = history
+
                 result.compute_trend()
                 return result
 
