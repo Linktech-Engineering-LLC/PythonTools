@@ -6,18 +6,14 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-25
- Modified: 2026-05-30
+Modified: 2026-09-08
  File: PythonTools/parser/BaseScriptParser.py
  Version: 1.0.0
  Description: Description of this module
 """
 
-
-
-import argparse
 from PythonTools.parser.formatters import CustomFormatter
 from PythonTools.parser.errors import CheckArgumentParser
-
 
 class BaseScriptParser:
     """
@@ -36,6 +32,8 @@ class BaseScriptParser:
         )
 
         self.version_string = version_string
+        self._dynamic_groups = {}
+        self._dynamic_subcommands = {}
 
         self._add_core_args()
         self._add_logging_args()
@@ -54,7 +52,7 @@ class BaseScriptParser:
         self.subparsers = self.parser.add_subparsers(dest="command")
         # JSON Output Options
         self.global_parent.add_argument(
-            "--json",
+            "--json", 
             action="store_true",
             help="Output results in JSON format (pretty-printed when TTY)"
         )
@@ -154,6 +152,7 @@ class BaseScriptParser:
     # --------------------------------------------------------
     def _add_cfg_args(self):
         cfg = self.global_parent.add_argument_group("Config Options")
+        self._dynamic_groups["Config Options"] = cfg
     
         cfg.add_argument(
             "--config-dir",
@@ -164,7 +163,8 @@ class BaseScriptParser:
     # --------------------------------------------------------
     def _add_inventory_args(self):
         inv = self.global_parent.add_argument_group("Inventory Options")
-
+        self._dynamic_groups["Inventory Options"] = inv
+        
         inv.add_argument(
             "-i", "--inventory",
             required=False,
@@ -181,6 +181,7 @@ class BaseScriptParser:
     # --------------------------------------------------------
     def _add_vault_args(self):
         vault = self.global_parent.add_argument_group("Vault Options")
+        self._dynamic_groups["Vault Options"] = vault
 
         vault.add_argument(
             "--vault-path",
@@ -195,7 +196,96 @@ class BaseScriptParser:
             required=False,
             help="Path to file containing vault password"
         )
+    # -------------------------------------------------------
+    # Dynamic Command/Group Processing
+    # -------------------------------------------------------
+    def add_group(self, title: str):
+        """
+        Add a new argument group to the global parent parser.
+        Returns the group so the caller can add arguments to it.
+        """
+        grp = self.parser.add_argument_group(title)
+        self._dynamic_groups[title] = grp
+        return grp
+    def add_subcommand(self, name: str, help: str | None):
+        """
+        Add a new subcommand to the parser.
+        Returns the subparser so the caller can add arguments to it.
+        """
+        sub = self.subparsers.add_parser(
+            name,
+            parents=[self.global_parent],
+            add_help=True,
+            help=help
+        )
+        self._dynamic_subcommands[name] = sub   
+        return sub
+    def remove_group(self, title: str):
+        parser = self.parser  # the parser that prints help
 
+        # Find the actual group object by title
+        grp = None
+        for g in parser._action_groups:
+            if g.title == title:
+                grp = g
+                break
+
+        if grp is None:
+            return False
+
+        # Remove the group object
+        try:
+            parser._action_groups.remove(grp)
+        except ValueError:
+            pass
+
+        # Remove actions belonging to this group
+        for action in list(grp._group_actions):
+            # Remove from actions list
+            try:
+                parser._actions.remove(action)
+            except ValueError:
+                pass
+
+            # Remove option strings
+            for opt in list(action.option_strings):
+                parser._option_string_actions.pop(opt, None)
+
+        return True
+    def add_flag(self, *flags, **kwargs):
+        """
+        Add a standalone flag directly to the global parent parser.
+        Example:
+            parser.add_flag("--src", help="Source folder")
+        """
+        action = self.parser.add_argument(*flags, **kwargs)
+        return action
+    def remove_flag(self, flag: str):
+        # Find the action first
+        action = self.global_parent._option_string_actions.get(flag)
+        if not action:
+            return
+
+        # Remove from actions list
+        self.global_parent._actions = [
+            a for a in self.global_parent._actions
+            if a is not action
+        ]
+
+        # Remove all option strings for that action
+        for opt in list(action.option_strings):
+            self.global_parent._option_string_actions.pop(opt, None)
+    def remove_command_positional(self):
+        parser = self.parser  # the active parser
+
+        for action in list(parser._actions):
+            # Positional arguments have no option_strings
+            if action.option_strings == [] and action.dest == "command":
+                parser._actions.remove(action)
+                return True
+
+        return False
+    
     # --------------------------------------------------------
     # Parse + Validate
     # --------------------------------------------------------

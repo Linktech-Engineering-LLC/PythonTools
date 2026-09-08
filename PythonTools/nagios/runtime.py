@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-07-19
+Modified: 2026-09-08
  File: PythonTools/nagios/runtime.py
  Version: 1.0.0
  Description: 
@@ -53,3 +53,6 @@ def format_runtime_info() -> str:
         f"Python {info['python_version']} ({info['implementation']})\n"
         f"{info['platform']}"
     )
+def build_version_string(prog, script_version, suite_version):
+    suite = f"(Suite {suite_version})" if suite_version else ""
+    return f"{prog} {script_version} {suite}\n{format_runtime_info()}"

@@ -7,13 +7,13 @@ def _load_version():
 
     # Search upward for VERSION (project root)
     for parent in [here, here.parent]:
-        version_file = parent / "VERSION"
+        version_file = parent / "VERSION.txt"
         if version_file.exists():
             return version_file.read_text().strip()
 
     # Frozen bundle (PyInstaller)
     if hasattr(sys, "_MEIPASS"):
-        vf = Path(sys._MEIPASS) / "VERSION"
+        vf = Path(sys._MEIPASS) / "VERSION.txt"
         if vf.exists():
             return vf.read_text().strip()
 

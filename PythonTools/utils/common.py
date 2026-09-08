@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-08-12
+Modified: 2026-09-08
  File: PythonTools/utils/common.py
  Version: 1.0.0
  Description: Description of this module
@@ -239,3 +239,29 @@ def round1(x):
     return round(x, 1) if x is not None else None
 def ceil1(x):
     return math.ceil(x * 10) / 10 if x is not None else None
+
+def load_version(source: Path) -> str:
+    try:
+        # One-file frozen mode (PyInstaller)
+        if hasattr(sys, "_MEIPASS"):
+            vf = Path(sys._MEIPASS) / "VERSION" / "VERSION.txt"
+            if vf.exists():
+                return vf.read_text().strip()
+
+        # One-folder frozen mode
+        exe_dir = Path(sys.argv[0]).resolve().parent
+        vf = exe_dir / "VERSION" / "VERSION.txt"
+        if vf.exists():
+            return vf.read_text().strip()
+
+        # Source mode
+        here = source.resolve()
+        for parent in [here, here.parent]:
+            vf = parent / "VERSION.txt"
+            if vf.exists():
+                return vf.read_text().strip()
+
+    except Exception:
+        pass
+
+    return "External to NMS_TOOLS Suite"

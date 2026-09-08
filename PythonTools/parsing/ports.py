@@ -5,14 +5,14 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-04
- Modified: 2026-08-04
+Modified: 2026-09-08
  File: PythonTools/parsing/ports.py
  Version: 1.0.0
  Description: Module description here
 """
 import socket
 
-from ..nagios.parser import CheckArgError
+from ..parser import CheckArgError
 
 def parse_ports(port_string):
     """

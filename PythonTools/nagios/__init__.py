@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-08-08
+Modified: 2026-09-08
  File: PythonTools/nagios/__init__.py
  Version: 1.0.0
  Description: Package library for the nagios module
@@ -44,13 +44,15 @@ from .banners import (
     log_interface,
 )
 from .helpers import should_output
-from .parser import BaseNagiosParser, CheckArgError
+from .parser import BaseNagiosParser
 from .result import build_result_object
 from .runtime import (
     get_runtime_info,
     format_runtime_info,
+    build_version_string,
 )
 __all__ = [
+    "BaseNagiosParser",
     "STATE_NAMES",
     "OK",
     "WARNING",
@@ -76,4 +78,5 @@ __all__ = [
     "log_interface",
     "get_runtime_info",
     "format_runtime_info",
+    "build_version_string",
 ]
