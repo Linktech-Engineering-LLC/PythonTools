@@ -44,6 +44,7 @@ class BaseScriptParser:
         self.parser = CheckArgumentParser(
             prog=prog,
             description=description,
+            usage=f"{prog} [options] {{version}}",
             formatter_class=CustomFormatter,
             add_help=True,
             parents=[self.global_parent],   # <-- THIS IS THE FIX
