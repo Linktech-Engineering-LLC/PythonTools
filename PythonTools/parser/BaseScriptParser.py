@@ -11,6 +11,7 @@ Modified: 2026-09-08
  Version: 1.0.0
  Description: Description of this module
 """
+import os
 
 from PythonTools.parser.formatters import CustomFormatter
 from PythonTools.parser.errors import CheckArgumentParser
@@ -39,6 +40,7 @@ class BaseScriptParser:
         self._add_logging_args()
         self._add_vault_args()
         self._add_cfg_args()
+        self._add_debug_args()
         self._add_inventory_args()
 
         self.parser = CheckArgumentParser(
@@ -73,8 +75,11 @@ class BaseScriptParser:
             add_help=False,
             help="Show version information"
         )
+        ver.set_defaults(func=self._handle_version)
         self.version_parser = ver
-
+    def _handle_version(self, args):
+        print(self.version_string)
+        os._exit(0)
     # --------------------------------------------------------
     # Core Options
     # --------------------------------------------------------
@@ -86,19 +91,34 @@ class BaseScriptParser:
             action="store_true",
             help="Enable verbose output"
         )
-
+        core.add_argument(
+            "--quiet",
+            action="store_true",
+            help="Suppress all non-error output"
+        )
         core.add_argument(
             "--dry-run",
             dest="dry_run",
             action="store_true",
             help="Simulate actions without applying changes"
         )
-
         core.add_argument(
-            "-V", "--version",
-            action="version",
-            version=self.version_string
+            "--fail-fast",
+            dest="fail_fast",
+            action="store_true",
+            help="Stop on first error"
         )
+        core.add_argument(
+            "--continue-on-error",
+            dest="continue_on_error",
+            action="store_true",
+            help="Continue processing even if errors"
+        )
+        #core.add_argument(
+        #    "-V", "--version",
+        #    action="version",
+        #    version=self.version_string
+        #)
 
     # --------------------------------------------------------
     # Logging Options
@@ -111,7 +131,6 @@ class BaseScriptParser:
             dest="log_dir",
             help="Folder containing the log file"
         )
-
         log.add_argument(
             "--log-max-mb",
             dest="log_max_mb",
@@ -119,33 +138,40 @@ class BaseScriptParser:
             default=5,
             help="Maximum size of logs in MB before rotation"
         )
-
         log.add_argument(
             "--compress-archive",
             dest="compress_archive",
             action="store_false",
             help="Compress rotated log"
         )
-
         log.add_argument(
             "--delete-log",
             dest="delete_log",
             action="store_false",
             help="Remove rotated log"
         )
-
         log.add_argument(
             "--archive-mode",
             choices=["tgz", "zip"],
             default="zip",
             help="Archive format for rotated logs"
         )
-
         log.add_argument(
             "--backup-count",
             type=int,
             default=7,
             help="Number of rotated archives to keep"
+        )
+        log.add_argument(
+            "--log-level",
+            choices=["debug","info","warning","error"],
+            default="info",
+            help="Logging verbosity"
+        )
+        log.add_argument(
+            "--no-log",
+            action="store_true",
+            help="Disable logging entirely"
         )
 
     # --------------------------------------------------------
@@ -158,7 +184,47 @@ class BaseScriptParser:
         cfg.add_argument(
             "--config-dir",
             help="Override config directory",
-        )        
+        ) 
+    # --------------------------------------------------------
+    # Debug Options
+    # --------------------------------------------------------
+    def _add_debug_args(self):
+        debug = self.global_parent.add_argument_group("Debug Options")
+        debug.add_argument(
+            "--debug",
+            action="store_true",
+            help="Enable debug logging"
+        )
+        debug.add_argument(
+            "--trace",
+            action="store_true",
+            help="Trace pipeline steps and internal flow"
+        )
+        debug.add_argument(
+            "--profile",
+            action="store_true",
+            help="Measure execution timing for major stages"
+        )
+        debug.add_argument(
+            "--dump-svg",
+            action="store_true",
+            help="Dump raw SVG before recoloring"
+        )
+        debug.add_argument(
+            "--dump-final",
+            action="store_true",
+            help="Dump final processed output"
+        )
+        debug.add_argument(
+            "--dump-meta",
+            action="store_true",
+            help="Dump metadata JSON for debugging"
+        )
+        debug.add_argument(
+            "--trace-flags",
+            action="store_true",
+            help="Show flag resolution and parser behavior"
+        )
     # --------------------------------------------------------
     # Inventory Option
     # --------------------------------------------------------
