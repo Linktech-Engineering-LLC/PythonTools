@@ -5,14 +5,19 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-28
+Modified: 2026-09-23
  File: PythonTools/weather/__init__.py
  Version: 1.0.0
  Description: Module description here
 """
 
-from .alerts import normalize_alerts, fetch_cached_alerts
-from .codes import WEATHER_CODES, map_context, map_icon
+from .alerts import (
+    normalize_alerts, 
+    fetch_cached_alerts, 
+    collect_alert_icons,
+    generate_alert_svg
+)
+from .codes import WEATHER_CODES, map_context, map_icon, collect_weather_icons
 from .formatters import fmt_clouds, fmt_precip, fmt_temp, fmt_wind
 from .normalize import (
     convert_units_mode_aware,
@@ -59,5 +64,8 @@ __all__ = [
     "normalize_alerts",
     "merge_daily_periods",
     "reorder_hourly_current_first",
-    "normalize_output"
+    "normalize_output",
+    "collect_alert_icons",
+    "collect_weather_icons",
+    "generate_alert_svg"
 ]

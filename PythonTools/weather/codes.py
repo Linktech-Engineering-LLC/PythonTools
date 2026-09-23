@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-16
+Modified: 2026-09-23
  File: PythonTools/weather/codes.py
  Version: 1.0.0
  Description: Weather Code Mapping utilities
@@ -313,3 +313,19 @@ def map_icon(code: int | None, is_day: bool) -> str:
         return "wi-na.svg"
     key = "day_icon" if is_day else "night_icon"
     return WEATHER_CODES[code][key]
+def collect_weather_icons():
+    """
+    Return all day/night icons referenced by WEATHER_CODES.
+    """
+    icons = set()
+
+    for entry in WEATHER_CODES.values():
+        day = entry.get("day_icon")
+        if isinstance(day, str) and day.endswith(".svg"):
+            icons.add(day)
+
+        night = entry.get("night_icon")
+        if isinstance(night, str) and night.endswith(".svg"):
+            icons.add(night)
+
+    return sorted(icons)

@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
- Modified: 2026-08-28
+Modified: 2026-09-23
  File: PythonTools/weather/alerts.py
  Version: 1.0.0
  Description: Weather Alerts Module
@@ -29,9 +29,20 @@ import time
 from .providers.builders import build_nws_alerts_url
 
 # ---------------------------------------------------------------------------
-# Alert Cache
+# Alert Constants
 # ---------------------------------------------------------------------------
-
+ALERT_ICONS = {
+    "wi-thunderstorm.svg",
+    "wi-flood.svg",
+    "wi-snow-wind.svg",
+    "wi-fire.svg",
+    "wi-windy.svg",
+    "wi-hot.svg",
+    "wi-thermometer-exterior.svg",
+    "wi-smoke.svg",
+    "wi-day-sunny.svg",
+    "wi-day-lightning.svg",
+}
 
 _ALERT_CACHE = {
     "timestamp": 0,
@@ -342,6 +353,16 @@ def alert_context(category, severity, event):
 
     # Otherwise return base
     return base
+def collect_alert_icons():
+    categories = [
+        "convective", "flood", "winter", "fire", "wind",
+        "heat", "cold", "air_quality", "uv", "other"
+    ]
+    icons = set()
+    for cat in categories:
+        icons.add(alert_icon(cat))
+    return sorted(icons)
+
 # ---------------------------------------------------------------------------
 # Severity Color Mapping
 # ---------------------------------------------------------------------------
@@ -406,4 +427,14 @@ def sort_alerts(alerts):
             -certainty_rank.get(a["certainty"], 0),
             a["event"]  # tie-breaker
         )
+    )
+def generate_alert_svg():
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">'
+        '<polygon points="32,6 58,58 6,58" '
+        'fill="#f1c40f" stroke="#c0392b" stroke-width="4" stroke-linejoin="round"/>'
+        '<line x1="32" y1="22" x2="32" y2="38" '
+        'stroke="#c0392b" stroke-width="6" stroke-linecap="round"/>'
+        '<circle cx="32" cy="48" r="4" fill="#c0392b"/>'
+        '</svg>'
     )
