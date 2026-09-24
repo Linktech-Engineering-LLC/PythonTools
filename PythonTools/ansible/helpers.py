@@ -6,16 +6,15 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-22
- Modified: 2026-05-30
+Modified: 2026-09-24
  File: PythonTools/ansible/helpers.py
  Version: 1.0.0
  Description: Description of this module
 """
 import yaml
 from pathlib import Path
+
 class InventoryError(Exception):
-    pass
-class InventoryLoadError(Exception):
     pass
 
 def load_yaml(path: Path) -> dict:

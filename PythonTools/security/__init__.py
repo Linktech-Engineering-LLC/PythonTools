@@ -6,12 +6,14 @@
  Company: Linktech Engineering LLC
 Created: 2026-09-24
 Modified: 2026-09-24
- File: PythonTools/log_helpers/__init__.py
+ File: PythonTools/security/__init__.py
  Version: 1.0.0
  Description: Module description here
 """
-from .factory import LoggerFactory
+
+from .guards import assert_not_root, assert_sudo_available
 
 __all__ = [
-    "LoggerFactory"
+    "assert_not_root",
+    "assert_sudo_available"
 ]

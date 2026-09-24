@@ -1,3 +1,16 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Leon McClatchey, Linktech Engineering LLC
+"""
+ Package: PythonTools
+ Author: Leon McClatchey
+ Company: Linktech Engineering LLC
+Created: 2026-09-24
+Modified: 2026-09-24
+ File: PythonTools/net/__init__.py
+ Version: 1.0.0
+ Description: Module description here
+"""
+
 from .collectors import (
     gather_local_interfaces,
     gather_snmp_interfaces,
@@ -37,3 +50,8 @@ from .tools import (
 from .nagios import build_perfdata
 from .pidguard import PidGuard
 from .tcp import check_port
+
+__all__ = [
+    "PidGuard",
+    "sudo_run"
+]

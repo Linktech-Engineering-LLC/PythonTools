@@ -5,14 +5,13 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-09-08
-Modified: 2026-09-08
+Modified: 2026-09-24
  File: PythonTools/ansible/__init__.py
  Version: 1.0.0
  Description: Module description here
 """
 from .helpers import (
     InventoryError,
-    InventoryLoadError,
     load_yaml,
     resolve_path,
     resolve_with_priority,
@@ -34,5 +33,10 @@ from .vault import (
 )
 __all__ = [
     "VAULT_PASSWORD_FILE_ENV",
-    "VAULT_PATH_ENV"
+    "VAULT_PATH_ENV",
+    "VaultLoader",
+    "VaultError",
+    "InventoryLoadError",
+    "load_yaml",
+    "GenericInventoryLoader"
 ]

@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-25
-Modified: 2026-09-22
+Modified: 2026-09-24
  File: PythonTools/parser/BaseScriptParser.py
  Version: 1.0.0
  Description: Description of this module
