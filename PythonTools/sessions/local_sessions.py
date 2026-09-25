@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-19
- Modified: 2026-04-19
+Modified: 2026-09-25
  File: PythonTools/sessions/local_sessions.py
  Version: 1.0.0
  Description: Description of this module
@@ -14,8 +14,7 @@
 # System Libraries
 from types import SimpleNamespace
 # Project Libraries
-from PythonTools.net_tools import local_command, sudo_run
-
+from PythonTools.net.tools import local_command, sudo_run
 
 class LocalSession:
     """
@@ -63,9 +62,12 @@ class LocalSession:
             )
 
         if self.logger:
-            self.logger.debug(
-                f"[LocalSession] Result code={result.code}, stdout={result.stdout}, stderr={result.stderr}"
-            )
+            if result is None:
+                self.logger.debug(f"[LocalSession] Result is None")
+            else:
+                self.logger.debug(
+                    f"[LocalSession] Result code={result.code}, stdout={result.stdout}, stderr={result.stderr}"
+                )
 
         return result
 

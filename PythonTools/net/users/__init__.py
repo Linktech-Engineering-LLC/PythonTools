@@ -6,17 +6,13 @@
  Company: Linktech Engineering LLC
 Created: 2026-09-25
 Modified: 2026-09-25
- File: PythonTools/sessions/__init__.py
+ File: PythonTools/net/users/__init__.py
  Version: 1.0.0
  Description: Module description here
 """
 
-from .local_sessions import LocalSession
-from .ssh_sessions import SSHSession
-from .systemd_runner import SystemdRunner
+from .local import get_valid_users
 
 __all__ = [
-    "LocalSession",
-    "SSHSession",
-    "SystemdRunner"
+    "get_valid_users"
 ]
