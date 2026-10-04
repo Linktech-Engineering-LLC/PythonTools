@@ -53,5 +53,6 @@ from .tcp import check_port
 
 __all__ = [
     "PidGuard",
+    "local_command",
     "sudo_run"
 ]

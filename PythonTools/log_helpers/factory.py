@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-14
- Modified: 2026-05-26
+Modified: 2026-10-04
  File: PythonTools/logging/factory.py
  Version: 1.1.0
  Description: Project-aware logging factory with rotation, archiving, and color support.
@@ -45,7 +45,7 @@ class LoggerFactory:
         self.log_cfg = log_cfg
 
         # Determine log file path
-        self.log_path = Path(log_cfg["path"])
+        self.log_path = Path(os.path.expanduser(log_cfg["path"]))
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Rotate once at startup
