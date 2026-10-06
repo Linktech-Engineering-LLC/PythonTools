@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-14
-Modified: 2026-10-04
+ Modified: 2026-10-06
  File: PythonTools/logging/factory.py
  Version: 1.1.0
  Description: Project-aware logging factory with rotation, archiving, and color support.
@@ -90,11 +90,15 @@ class LoggerFactory:
             file_handler.doRollover()
 
         # File formatter
+        if self.log_cfg.get("include_stack_traces", False):
+            fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s\n%(exc_text)s"
+        else:
+            fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+
+        timestamp_format = self.log_cfg.get("timestamp_format", "%Y-%m-%d %H:%M:%S")
+
         file_handler.setFormatter(
-            logging.Formatter(
-                "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S",
-            )
+            logging.Formatter(fmt, datefmt=timestamp_format)
         )
         file_handler.setLevel(logging.DEBUG)
         root_logger.addHandler(file_handler)
@@ -109,9 +113,12 @@ class LoggerFactory:
                     ColorFormatter("[%(levelname)s] %(name)s: %(message)s")
                 )
             else:
-                stream_handler.setFormatter(
-                    logging.Formatter("[%(levelname)s] %(name)s: %(message)s")
-                )
+                if self.log_cfg.get("include_stack_traces", False):
+                    console_fmt = "[%(levelname)s] %(name)s: %(message)s\n%(exc_text)s"
+                else:
+                    console_fmt = "[%(levelname)s] %(name)s: %(message)s"
+
+                stream_handler.setFormatter(logging.Formatter(console_fmt))
 
             stream_handler.setLevel(logging.INFO)
             root_logger.addHandler(stream_handler)
