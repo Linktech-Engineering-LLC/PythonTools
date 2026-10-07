@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-14
- Modified: 2026-05-31
+ Modified: 2026-10-07
  File: PythonTools/logging/helpers.py
  Version: 1.0.1
  Description: Logging initialization helpers for RunUpdates
@@ -159,3 +159,8 @@ def initialize_universal_logging(context: dict) -> dict:
             "ENVIRONMENT": context.get("ENVIRONMENT"),
         },
     }
+def log_call(func):
+    def wrapper(self, *args, **kwargs):
+        self.logger.debug(f"{func.__name__} called.")
+        return func(self, *args, **kwargs)
+    return wrapper
