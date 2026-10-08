@@ -13,7 +13,7 @@ requires-python = ">=3.12"
 readme = {file = "README.md", content-type = "text/markdown"}
 
 dependencies = [
-    # Add real deps later if needed
+    PyYAML>=6.0
 ]
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}
