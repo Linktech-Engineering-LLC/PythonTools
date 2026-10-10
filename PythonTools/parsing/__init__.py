@@ -5,10 +5,16 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-04
- Modified: 2026-08-04
+ Modified: 2026-10-10
  File: PythonTools/parsing/__init__.py
  Version: 1.0.0
  Description: Module description here
 """
 
 from .ports import parse_ports, resolve_services
+from .substitution import substitute_env, load_yaml_with_substitution
+
+__all__ = [
+    "parse_ports", "resolve_services",
+    "substitute_env", "load_yaml_with_substitution"
+]

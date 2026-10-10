@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-16
-Modified: 2026-09-08
+ Modified: 2026-10-10
  File: PythonTools/ansible/vault_loader.py
  Version: 1.0.0
  Description: Generic deterministic Ansible Vault decryptor.
@@ -130,7 +130,7 @@ class VaultLoader:
 
         return subtree
 
-def resolve_vault_password(cli_value: str | None, logger=None):
+def resolve_vault_password(cli_value: str | None = None, logger=None):
     """
     Determine whether a vault password source was supplied.
 

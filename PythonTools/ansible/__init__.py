@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-09-08
-Modified: 2026-09-24
+ Modified: 2026-10-10
  File: PythonTools/ansible/__init__.py
  Version: 1.0.0
  Description: Module description here
@@ -38,5 +38,7 @@ __all__ = [
     "VaultError",
     "InventoryLoadError",
     "load_yaml",
-    "GenericInventoryLoader"
+    "GenericInventoryLoader",
+    "resolve_vault_password",
+    "resolve_vault_path"
 ]
