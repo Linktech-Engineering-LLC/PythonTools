@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskScheduler Security Configuration Schema",
+  "type": "object",
+
+  "required": ["security"],
+
+  "properties": {
+    "security": {
+      "type": "object",
+      "required": [
+        "sudo",
+        "user_switching",
+        "privilege_escalation",
+        "vault",
+        "paths",
+        "password_policy"
+      ],
+
+      "properties": {
+        "sudo": {
+          "type": "object",
+          "required": [
+            "allow",
+            "require_for_other_users",
+            "prompt_on_demand",
+            "cache_session",
+            "remote_sudo"
+          ],
+          "properties": {
+            "allow": { "type": "boolean" },
+            "require_for_other_users": { "type": "boolean" },
+            "prompt_on_demand": { "type": "boolean" },
+            "cache_session": { "type": "boolean" },
+            "remote_sudo": { "type": "boolean" }
+          }
+        },
+
+        "user_switching": {
+          "type": "object",
+          "required": ["allow", "allowed_users", "require_sudo"],
+          "properties": {
+            "allow": { "type": "boolean" },
+            "allowed_users": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "require_sudo": { "type": "boolean" }
+          }
+        },
+
+        "privilege_escalation": {
+          "type": "object",
+          "required": [
+            "allow",
+            "allow_cron_edit",
+            "allow_systemd_edit",
+            "allow_env_edit"
+          ],
+          "properties": {
+            "allow": { "type": "boolean" },
+            "allow_cron_edit": { "type": "boolean" },
+            "allow_systemd_edit": { "type": "boolean" },
+            "allow_env_edit": { "type": "boolean" }
+          }
+        },
+
+        "vault": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "vault_path_env",
+            "password_file_env",
+            "encrypton_path_env",
+            "encrypton_key_env"
+          ],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "vault_path_env": { "type": "string" },
+            "password_file_env": { "type": "string" },
+            "encrypton_path_env": { "type": "string" },
+            "encrypton_key_env": { "type": "string" }
+          }
+        },
+
+        "paths": {
+          "type": "object",
+          "required": [
+            "ssh_keyfile_env",
+            "sudo_password_file_env"
+          ],
+          "properties": {
+            "ssh_keyfile_env": { "type": "string" },
+            "sudo_password_file_env": { "type": "string" }
+          }
+        },
+
+        "password_policy": {
+          "type": "object",
+          "required": [
+            "prompt_timeout_seconds",
+            "max_attempts",
+            "lockout_after_failures"
+          ],
+          "properties": {
+            "prompt_timeout_seconds": { "type": "integer" },
+            "max_attempts": { "type": "integer" },
+            "lockout_after_failures": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}

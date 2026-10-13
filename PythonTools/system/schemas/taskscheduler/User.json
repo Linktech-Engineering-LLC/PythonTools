@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskScheduler User/Workspace Configuration Schema",
+  "type": "object",
+
+  "required": ["cron", "systemd", "environment"],
+
+  "properties": {
+    "cron": {
+      "type": "array",
+      "description": "User-defined cron entries",
+      "items": {
+        "type": "object",
+        "required": ["schedule", "command"],
+        "properties": {
+          "schedule": { "type": "string" },
+          "command": { "type": "string" },
+          "comment": { "type": "string" },
+          "enabled": { "type": "boolean" }
+        }
+      }
+    },
+
+    "systemd": {
+      "type": "array",
+      "description": "User-defined systemd unit entries",
+      "items": {
+        "type": "object",
+        "required": ["unit", "description"],
+        "properties": {
+          "unit": { "type": "string" },
+          "description": { "type": "string" },
+          "active": { "type": "boolean" },
+          "loaded": { "type": "boolean" },
+          "enabled": { "type": "boolean" }
+        }
+      }
+    },
+
+    "environment": {
+      "type": "array",
+      "description": "User-defined environment variables",
+      "items": {
+        "type": "object",
+        "required": ["variable", "value"],
+        "properties": {
+          "variable": { "type": "string" },
+          "value": { "type": "string" },
+          "scope": {
+            "type": "string",
+            "enum": ["user", "system", "session"]
+          }
+        }
+      }
+    },
+
+    "gui": {
+      "type": "object",
+      "description": "Workspace-level GUI overrides",
+      "properties": {
+        "theme": { "type": "string" },
+        "grid_layout": { "type": "string" },
+        "default_view": { "type": "string" },
+        "autosize_columns": { "type": "boolean" }
+      }
+    },
+
+    "paths": {
+      "type": "object",
+      "description": "Workspace-level path overrides",
+      "properties": {
+        "config_root": { "type": "string" },
+        "data_root": { "type": "string" },
+        "temp_root": { "type": "string" },
+        "export_root": { "type": "string" },
+        "plugins": { "type": "string" },
+        "backups": { "type": "string" }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "Optional workspace metadata",
+      "properties": {
+        "workspace_name": { "type": "string" },
+        "created": { "type": "string", "format": "date-time" },
+        "updated": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-10-08
- Modified: 2026-10-08
+ Modified: 2026-10-13
  File: PythonTools/system/env/userinfo.py
  Version: 1.0.0
  Description: User identity introspection for the current OS user.
@@ -31,3 +31,4 @@ def get_current_user():
         "shell": pw.pw_shell,
         "name": pw.pw_gecos.split(",")[0],  # normalized full name
     }
+

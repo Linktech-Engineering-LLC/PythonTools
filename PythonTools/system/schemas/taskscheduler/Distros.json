@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskScheduler Distro Capability Schema",
+  "type": "object",
+
+  "properties": {
+    "linux": {
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "required": [
+            "supports_systemd",
+            "supports_cron",
+            "supports_env"
+          ],
+          "properties": {
+            "supports_systemd": { "type": "boolean" },
+            "supports_cron": { "type": "boolean" },
+            "supports_env": { "type": "boolean" },
+
+            "cron_tab_path": { "type": "string" },
+            "cron_log_path": { "type": "string" },
+
+            "cron_binaries": {
+              "type": "object",
+              "required": ["crontab", "cron_daemon", "cron_service"],
+              "properties": {
+                "crontab": { "type": "string" },
+                "cron_daemon": { "type": "string" },
+                "cron_service": { "type": "string" }
+              }
+            },
+
+            "systemd_unit_path": { "type": "string" },
+
+            "systemd_binaries": {
+              "type": "object",
+              "required": ["systemctl", "journalctl"],
+              "properties": {
+                "systemctl": { "type": "string" },
+                "journalctl": { "type": "string" }
+              }
+            },
+
+            "env_files": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+
+            "package_manager": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "windows": {
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "required": ["supports_systemd", "supports_cron", "supports_env"],
+          "properties": {
+            "supports_systemd": { "type": "boolean" },
+            "supports_cron": { "type": "boolean" },
+            "supports_env": { "type": "boolean" }
+          }
+        }
+      }
+    },
+
+    "macos": {
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "required": ["supports_systemd", "supports_cron"],
+          "properties": {
+            "supports_systemd": { "type": "boolean" },
+            "supports_cron": { "type": "boolean" },
+            "supports_env": { "type": "boolean" },
+
+            "cron_binaries": {
+              "type": "object",
+              "required": ["crontab", "cron_daemon", "cron_service"],
+              "properties": {
+                "crontab": { "type": "string" },
+                "cron_daemon": { "type": "string" },
+                "cron_service": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

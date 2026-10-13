@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Project Configuration Schema",
+  "type": "object",
+
+  "required": ["TaskScheduler", "logs", "paths"],
+
+  "properties": {
+    "TaskScheduler": {
+      "type": "object",
+      "required": [
+        "config_version",
+        "mode",
+        "features",
+        "gui",
+        "safety",
+        "install"
+      ],
+      "properties": {
+        "config_version": { "type": "string" },
+
+        "mode": {
+          "type": "string",
+          "enum": ["developer", "production", "portable"]
+        },
+
+        "features": {
+          "type": "object",
+          "required": ["cron", "systemd", "env_manager", "log_viewer", "alias_detection"],
+          "properties": {
+            "cron": {
+              "type": "object",
+              "required": [
+                "enabled",
+                "editable",
+                "columns",
+                "readonly",
+                "stretch_last",
+                "autosize",
+                "status_labels"
+              ],
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "editable": { "type": "boolean" },
+                "columns": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "readonly": { "type": "boolean" },
+                "stretch_last": { "type": "boolean" },
+                "autosize": { "type": "boolean" },
+                "status_labels": {
+                  "type": "object",
+                  "required": ["enabled", "disabled"],
+                  "properties": {
+                    "enabled": { "type": "string" },
+                    "disabled": { "type": "string" }
+                  }
+                }
+              }
+            },
+
+            "systemd": {
+              "type": "object",
+              "required": [
+                "enabled",
+                "editable",
+                "columns",
+                "readonly",
+                "stretch_last",
+                "autosize",
+                "status_labels"
+              ],
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "editable": { "type": "boolean" },
+                "columns": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "readonly": { "type": "boolean" },
+                "stretch_last": { "type": "boolean" },
+                "autosize": { "type": "boolean" },
+                "status_labels": {
+                  "type": "object",
+                  "required": ["active", "inactive"],
+                  "properties": {
+                    "active": { "type": "string" },
+                    "inactive": { "type": "string" }
+                  }
+                }
+              }
+            },
+
+            "env_manager": {
+              "type": "object",
+              "required": [
+                "enabled",
+                "editable",
+                "columns",
+                "readonly",
+                "stretch_last",
+                "autosize"
+              ],
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "editable": { "type": "boolean" },
+                "columns": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "readonly": { "type": "boolean" },
+                "stretch_last": { "type": "boolean" },
+                "autosize": { "type": "boolean" }
+              }
+            },
+
+            "log_viewer": { "type": "boolean" },
+            "alias_detection": { "type": "boolean" }
+          }
+        },
+
+        "gui": {
+          "type": "object",
+          "required": ["theme", "grid_layout", "editable_fields"],
+          "properties": {
+            "theme": { "type": "string" },
+            "grid_layout": { "type": "string" },
+            "editable_fields": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+
+        "safety": {
+          "type": "object",
+          "required": [
+            "warn_on_alias",
+            "warn_on_relative_paths",
+            "validate_before_save",
+            "require_explicit_path"
+          ],
+          "properties": {
+            "warn_on_alias": { "type": "boolean" },
+            "warn_on_relative_paths": { "type": "boolean" },
+            "validate_before_save": { "type": "boolean" },
+            "require_explicit_path": { "type": "boolean" }
+          }
+        },
+
+        "install": {
+          "type": "object",
+          "required": ["mode", "portable_root"],
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["base", "portable"]
+            },
+            "portable_root": {
+              "type": ["string", "null"]
+            }
+          }
+        }
+      }
+    },
+
+    "logs": {
+      "type": "object",
+      "required": [
+        "console_enabled",
+        "color_enabled",
+        "level",
+        "path",
+        "timestamp_format",
+        "max_lines",
+        "highlight_patterns",
+        "include_stack_traces",
+        "rotation",
+        "archive",
+        "retention",
+        "subsystems",
+        "gui"
+      ],
+      "properties": {
+        "console_enabled": { "type": "boolean" },
+        "color_enabled": { "type": "boolean" },
+        "level": { "type": "string" },
+        "path": { "type": "string" },
+        "timestamp_format": { "type": "string" },
+        "max_lines": { "type": "integer" },
+
+        "highlight_patterns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+
+        "include_stack_traces": { "type": "boolean" },
+
+        "rotation": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "max_size_mb",
+            "max_files",
+            "compress",
+            "archive_type"
+          ],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "max_size_mb": { "type": "integer" },
+            "max_files": { "type": "integer" },
+            "compress": { "type": "boolean" },
+            "archive_type": { "type": "string" }
+          }
+        },
+
+        "archive": {
+          "type": "object",
+          "required": ["enabled", "path", "compress"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "path": { "type": "string" },
+            "compress": { "type": "boolean" }
+          }
+        },
+
+        "retention": {
+          "type": "object",
+          "required": ["days"],
+          "properties": {
+            "days": { "type": "integer" }
+          }
+        },
+
+        "subsystems": {
+          "type": "object",
+          "required": ["cron", "systemd", "environment", "internal"],
+          "properties": {
+            "cron": { "type": "boolean" },
+            "systemd": { "type": "boolean" },
+            "environment": { "type": "boolean" },
+            "internal": { "type": "boolean" }
+          }
+        },
+
+        "gui": {
+          "type": "object",
+          "required": ["default_view", "allow_path_edit"],
+          "properties": {
+            "default_view": { "type": "string" },
+            "allow_path_edit": { "type": "boolean" }
+          }
+        }
+      }
+    },
+
+    "paths": {
+      "type": "object",
+      "required": [
+        "config_root",
+        "data_root",
+        "temp_root",
+        "export_root",
+        "portable_root",
+        "plugins",
+        "backups"
+      ],
+      "properties": {
+        "config_root": { "type": "string" },
+        "data_root": { "type": "string" },
+        "temp_root": { "type": "string" },
+        "export_root": { "type": "string" },
+        "portable_root": { "type": ["string", "null"] },
+        "plugins": { "type": "string" },
+        "backups": { "type": "string" }
+      }
+    }
+  }
+}

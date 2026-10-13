@@ -5,12 +5,13 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-10-08
- Modified: 2026-10-08
+ Modified: 2026-10-13
  File: PythonTools/system/env/osinfo.py
  Version: 1.0.0
  Description: Low-level system introspection: OS family, flavor, architecture.
 """
 
+import os
 import platform
 import sys
 
@@ -109,3 +110,16 @@ def is_macos():
 
 def is_windows():
     return sys.platform.startswith("win")
+
+def resolve_xdg(env_var: str, cfg_value: str | None, default: str):
+    # 1. Environment override
+    env = os.getenv(env_var)
+    if env:
+        return os.path.expanduser(env)
+
+    # 2. Config override
+    if cfg_value:
+        return os.path.expanduser(cfg_value)
+
+    # 3. XDG default
+    return os.path.expanduser(default)

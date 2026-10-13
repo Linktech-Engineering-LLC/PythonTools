@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-10-08
- Modified: 2026-10-08
+ Modified: 2026-10-13
  File: PythonTools/system/env/__init__.py
  Version: 1.0.0
  Description: Module description here
@@ -19,10 +19,13 @@ from .osinfo import (
     get_architecture, get_linux_flavor,
     get_macos_version, get_unix_flavor,
     get_windows_flavor, is_linux, is_macos,
-    is_windows
+    is_windows, resolve_xdg
 )
-from .userinfo import get_current_user
+from .userinfo import (
+    get_current_user
+)
 
 __all__ = [
     "get_environment",
+    "resolve_xdg"
 ]
