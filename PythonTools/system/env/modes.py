@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-30
- Modified: 2026-10-08
+ Modified: 2026-10-15
  File: PythonTools/system/env/modes.py
  Version: 1.1.0
  Description: Environment classification: OS family, flavor, user, dev/frozen.
@@ -13,13 +13,13 @@
 
 import sys
 
-from PythonTools.system.env.osinfo import (
+from .osinfo import (
     is_linux, is_macos, is_windows,
     get_linux_flavor, get_macos_version,
     get_unix_flavor, get_windows_flavor,
     get_architecture
 )
-from PythonTools.system.env.userinfo import get_current_user
+from .userinfo import get_current_user
 
 
 # ---------------------------------------------------------------------------
@@ -91,17 +91,17 @@ def get_os_details():
 # ---------------------------------------------------------------------------
 
 def get_environment():
-    """
-    Return a unified environment descriptor containing:
-    - OS family
-    - OS details
-    - user identity
-    - dev/frozen mode
-    """
     return {
         "family": get_os_family(),
         "details": get_os_details(),
         "user": get_current_user(),
+        "python": {
+            "version": tuple(sys.version_info[:3]),
+            "major": sys.version_info.major,
+            "minor": sys.version_info.minor,
+            "micro": sys.version_info.micro,
+        },
         "dev_mode": is_dev_mode(),
         "frozen": is_frozen(),
     }
+

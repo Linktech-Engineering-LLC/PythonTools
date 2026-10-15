@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Logs Configuration Schema",
+  "type": "object",
+
+  "required": ["logs"],
+
+  "properties": {
+    "logs": {
+      "type": "object",
+      "required": [
+        "console_enabled",
+        "color_enabled",
+        "level",
+        "path",
+        "timestamp_format",
+        "max_lines",
+        "highlight_patterns",
+        "include_stack_traces",
+        "rotation",
+        "archive",
+        "retention",
+        "subsystems",
+        "gui"
+      ],
+      "properties": {
+        "console_enabled": { "type": "boolean" },
+        "color_enabled": { "type": "boolean" },
+        "level": { "type": "string" },
+        "path": { "type": "string" },
+        "timestamp_format": { "type": "string" },
+        "max_lines": { "type": "integer" },
+
+        "highlight_patterns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+
+        "include_stack_traces": { "type": "boolean" },
+
+        "rotation": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "max_size_mb",
+            "max_files",
+            "compress",
+            "archive_type"
+          ],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "max_size_mb": { "type": "integer" },
+            "max_files": { "type": "integer" },
+            "compress": { "type": "boolean" },
+            "archive_type": { "type": "string" }
+          }
+        },
+
+        "archive": {
+          "type": "object",
+          "required": ["enabled", "path", "compress"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "path": { "type": "string" },
+            "compress": { "type": "boolean" }
+          }
+        },
+
+        "retention": {
+          "type": "object",
+          "required": ["days"],
+          "properties": {
+            "days": { "type": "integer" }
+          }
+        },
+
+        "subsystems": {
+          "type": "object",
+          "required": ["cron", "systemd", "environment", "internal"],
+          "properties": {
+            "cron": { "type": "boolean" },
+            "systemd": { "type": "boolean" },
+            "environment": { "type": "boolean" },
+            "internal": { "type": "boolean" }
+          }
+        },
+
+        "gui": {
+          "type": "object",
+          "required": ["default_view", "allow_path_edit"],
+          "properties": {
+            "default_view": { "type": "string" },
+            "allow_path_edit": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}

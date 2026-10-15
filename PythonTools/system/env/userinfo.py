@@ -5,12 +5,14 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-10-08
- Modified: 2026-10-13
+ Modified: 2026-10-15
  File: PythonTools/system/env/userinfo.py
  Version: 1.0.0
  Description: User identity introspection for the current OS user.
 """
 
+import os
+import ctypes
 import pwd
 import getpass
 
@@ -30,5 +32,16 @@ def get_current_user():
         "home": pw.pw_dir,
         "shell": pw.pw_shell,
         "name": pw.pw_gecos.split(",")[0],  # normalized full name
+        "is_elevated": is_elevated()
     }
 
+def is_elevated():
+    # Linux / macOS
+    if hasattr(os, "geteuid"):
+        return os.geteuid() == 0
+
+    # Windows
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
