@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-07-16
- Modified: 2026-07-16
+ Modified: 2026-10-20
  File: PythonTools/net/collectors.py
  Version: 1.0.0
  Description: Module description here
@@ -13,8 +13,15 @@ Created: 2026-07-16
 import os
 import psutil
 import socket
-from easysnmp import Session
-
+from pysnmp.hlapi.asyncio import (
+    next_cmd,
+    SnmpEngine,
+    CommunityData,
+    UdpTransportTarget,
+    ContextData,
+    ObjectType,
+    ObjectIdentity
+)
 from .tools import decode_mac
 # -----------------------------
 # Local Interface Information
@@ -110,20 +117,30 @@ def gather_local_interfaces(timeout=None):
 # SNMP Interface Information
 # -----------------------------
 def snmp_walk(host, community, oid, port=161, timeout=3):
-    session = Session(
-        hostname=host,
-        community=community,
-        version=2,
-        remote_port=port,
-        timeout=timeout
-    )
-
-    results = session.walk(oid)
-
     out = {}
-    for item in results:
-        idx = int(item.oid_index)
-        out[idx] = item.value
+
+    for (errorIndication,
+         errorStatus,
+         errorIndex,
+         varBinds) in next_cmd(
+            SnmpEngine(),
+            CommunityData(community, mpModel=1),
+            UdpTransportTarget((host, port), timeout=timeout, retries=1),
+            ContextData(),
+            ObjectType(ObjectIdentity(oid)),
+            lexicographicMode=False
+         ):
+
+        if errorIndication:
+            break
+        if errorStatus:
+            break
+
+        for varBind in varBinds:
+            oid_full, value = varBind
+            idx = int(oid_full.prettyPrint().split('.')[-1])
+            out[idx] = value.prettyPrint()
+
     return out
 def gather_snmp_interfaces(ip, community, port=161, timeout=3):
     ifDescr       = snmp_walk(ip, community, "1.3.6.1.2.1.2.2.1.2", port, timeout)

@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
-Modified: 2026-09-08
+ Modified: 2026-10-20
  File: PythonTools/nagios/parser.py
  Version: 1.0.0
  Description: Base parser for Nagios-compatible NMS_Tools checks.
@@ -43,7 +43,6 @@ class BaseNagiosParser(BaseScriptParser):
         # Add Nagios-specific flags
         nagios = self.add_group("Nagios Output Options")
         nagios.add_argument("-j", "--json", action="store_true", help="JSON output mode")
-        nagios.add_argument("-q", "--quiet", action="store_true", help="Quiet mode")
         nagios.add_argument("--color", action="store_true", help="Colorize output")
         nagios.add_argument("--output", metavar="FILE", help="Write output to FILE")
 
