@@ -118,7 +118,6 @@ def gather_local_interfaces(timeout=None):
 # -----------------------------
 def snmp_walk(host, community, oid, port=161, timeout=3):
     out = {}
-
     for (errorIndication,
          errorStatus,
          errorIndex,
