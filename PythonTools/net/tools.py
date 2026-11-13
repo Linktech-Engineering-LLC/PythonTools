@@ -274,23 +274,38 @@ def is_local(name, iface):
 def is_virtual(name):
     return name.startswith(VIRTUAL_PREFIXES)
 # Runs a command on the local machine
-def local_command(cmd: str, raise_on_error: bool = False, logger=None):
+def local_command(
+    cmd: str, 
+    raise_on_error: bool = False,
+    raw_output: bool = False, 
+    logger=None,
+    input_text: Optional[str] = None
+    ):
     try:
         if logger:
             logger.command_start(cmd)
 
-        proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        proc = subprocess.run(
+            cmd, 
+            shell=True, 
+            capture_output=True, 
+            text=True,
+            input = input_text
+            )
 
         if logger:
             logger.command_end(cmd, proc.returncode)
 
         if proc.returncode != 0:
             if logger:
-                logger.command_error("local_command", RuntimeError(proc.stderr.strip()))
+                logger.command_error("local_command", RuntimeError(proc.stderr))
             if raise_on_error:
-                raise RuntimeError(proc.stderr.strip())
+                raise RuntimeError(proc.stderr)
 
-        return proc.stdout.strip(), proc.returncode, proc.stderr.strip()
+        if raw_output:
+            return proc.stdout, proc.returncode, proc.stderr
+        else:
+            return proc.stdout.strip(), proc.returncode, proc.stderr.strip()
 
     except Exception as error:
         if logger:
@@ -318,10 +333,12 @@ def run_with_error_handling(cmd: str, sudo_password: Optional[str], raise_on_err
     return sudo_run(cmd, sudo_password=sudo_password, raise_on_error=raise_on_error, **kwargs)
 # Sudo Command Function
 def sudo_run(
-    cmd: str,
+    cmd: str | list[str],
     sudo_password: Optional[str],
     raise_on_error: bool = False,
-    logger=None
+    logger=None,
+    *,
+    input_text: Optional[str] = None,
 ):
     # Always define these so Pylance is satisfied
     raw_cmd: str = ""
@@ -329,20 +346,7 @@ def sudo_run(
     cmd_list: list[str] = []
     result_obj: Optional[SimpleNamespace] = None
 
-    # Root mode (no sudo)
-    if sudo_password is None:
-        out, code, err = local_command(cmd, logger=logger)
-        return SimpleNamespace(
-            msg=out,
-            code=code,
-            err=err,
-            stdout=out,
-            stderr=err,
-            returncode=code,
-            as_tuple=(out, code, err)
-        )
-
-    # Normalize command into raw_cmd + args
+     # Normalize command into raw_cmd + args
     if isinstance(cmd, str):
         raw_cmd = cmd
         if any(op in cmd for op in ["&&", "||", "|", ";", ">", "<"]):
@@ -357,20 +361,40 @@ def sudo_run(
     else:
         raise TypeError("cmd must be str or list")
 
-    # Build sudo command list
-    cmd_list = ["sudo", "-S"] + args
-
     try:
         if logger:
             logger.command_start(f"sudo_run raw: {raw_cmd}, sudo_run args: {args}")
 
-        result = subprocess.run(
-            cmd_list,
-            capture_output=True,
-            text=True,
-            input=f"{sudo_password}\n",
-            check=True
-        )
+        if sudo_password is not None:
+            auth = subprocess.run(
+                ["sudo", "-S", "-p", "", "-v"],
+                input=f"{sudo_password}\n",
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if auth.returncode != 0:
+                result = auth
+            else:
+                result = None
+        else:
+            result = None
+
+        if result is None:
+            # If already root, run directly. Otherwise, permit passwordless
+            # sudo only; the command's stdin is reserved for input_text.
+            if sudo_password is None and os.geteuid() == 0:
+                cmd_list = args
+            else:
+                cmd_list = ["sudo", "-n"] + args
+
+            result = subprocess.run(
+                cmd_list,
+                capture_output=True,
+                text=True,
+                input=input_text,
+                check=False,
+            )
 
         result_obj = SimpleNamespace(
             msg=result.stdout,
@@ -379,20 +403,12 @@ def sudo_run(
             stdout=result.stdout,
             stderr=result.stderr,
             returncode=result.returncode,
-            as_tuple=(result.stdout, result.returncode, result.stderr)
+            as_tuple=(result.stdout, result.returncode, result.stderr),
         )
 
-    except subprocess.CalledProcessError as e:
-        result_obj = SimpleNamespace(
-            msg=e.stdout,
-            code=e.returncode,
-            err=e.stderr,
-            stdout=e.stdout,
-            stderr=e.stderr,
-            returncode=e.returncode,
-            as_tuple=(e.stdout, e.returncode, e.stderr)
-        )
-
+        if raise_on_error and result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or "sudo command failed")
+        
     finally:
         if logger and result_obj is not None:
             logger.command_end("sudo_run finished", result_obj.code)
