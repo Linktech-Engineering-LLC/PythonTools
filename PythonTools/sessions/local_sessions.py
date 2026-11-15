@@ -34,7 +34,7 @@ class LocalSession:
     # ------------------------------------------------------------
     # Core execution
     # ------------------------------------------------------------
-    def run(self, command: str, use_sudo: bool = False):
+    def run(self, command: str, use_sudo: bool = False, input_text: str | None = None):
         """
         Execute a command locally.
 
@@ -48,7 +48,7 @@ class LocalSession:
             self.logger.debug(f"[LocalSession] Executing ({mode}): {command}")
 
         if use_sudo:
-            result = sudo_run(command, sudo_password=self.sudo_password)
+            result = sudo_run(command, sudo_password=self.sudo_password, input_text=input_text)
         else:
             out, code, err = local_command(command)
             result = SimpleNamespace(
