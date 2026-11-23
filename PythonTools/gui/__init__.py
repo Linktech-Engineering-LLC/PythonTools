@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-10-07
- Modified: 2026-10-07
+ Modified: 2026-11-23
  File: PythonTools/gui/__init__.py
  Version: 1.0.0
  Description: Module description here
@@ -13,8 +13,10 @@ Created: 2026-10-07
 
 from .logger_mixin import LoggerMixin
 from .qt_logger_mixin import QtLoggerMixin
+from .monitors import center_on_active_monitor
 
 __all__ = [
+    "center_on_active_monitor",
     "LoggerMixin",
     "QtLoggerMixin"
 ]
