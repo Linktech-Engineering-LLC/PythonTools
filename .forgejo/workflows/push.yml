@@ -49,14 +49,6 @@ jobs:
           echo "Running Ruff..."
           ruff check . | tee ruff.log || true
 
-          {
-            echo "## Ruff"
-            echo ""
-            echo '```'
-            tail -50 ruff.log || true
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
       - name: Ruff Format
         if: ${{ hashFiles('**/*.py') != '' }}
         continue-on-error: true
@@ -64,29 +56,16 @@ jobs:
           echo "Checking formatting..."
           ruff format --check . | tee ruff-format.log || true
 
-          {
-            echo ""
-            echo "## Ruff Format"
-            echo ""
-            echo '```'
-            cat ruff-format.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
       - name: Ruff Statistics
         if: ${{ hashFiles('**/*.py') != '' }}
         continue-on-error: true
         run: |
-          ruff check . --statistics | tee ruff-stats.log || true
+          echo ""
+          echo "========================================"
+          echo "Ruff Statistics"
+          echo "========================================"
 
-          {
-            echo ""
-            echo "## Ruff Statistics"
-            echo ""
-            echo '```'
-            cat ruff-stats.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          ruff check . --statistics || true
 
       - name: Run yamllint
         if: ${{ hashFiles('**/*.yml', '**/*.yaml') != '' }}
@@ -100,18 +79,6 @@ jobs:
           echo ""
           echo "Warning Breakdown:"
           grep -o '\[[^]]*\]' yamllint.log | sort | uniq -c || true
-
-          {
-            echo "## Yamllint"
-            echo ""
-            echo "- Errors: $ERRORS"
-            echo "- Warnings: $WARNINGS"
-            echo ""
-            echo "### Rule Breakdown"
-            echo '```'
-            grep -o '\[[^]]*\]' yamllint.log | sort |*uniq -c || true
-            echo '*``*
-          } >> "$GITHUB_STEP_SUMMARY
 
       - name: Shellcheck
         if: ${{ hashFiles('**/*.sh') != '' }}
@@ -148,11 +115,13 @@ jobs:
           grep '^In .* line [0-9]\+:' shellcheck.log | \
             sed 's/^In //' | sed 's/ line.*$//' | \
             sort -u || true
+
       - name: Pytest
         if: ${{ hashFiles('tests/**/*.py', 'test/**/*.py') != '' }}
         continue-on-error: true
         run: |
           pytest -v
+
       - name: MyPy
         if: ${{ hashFiles('pyproject.toml') != '' }}
         continue-on-error: true
