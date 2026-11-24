@@ -67,6 +67,12 @@ jobs:
 
           ERRORS=$(grep -c "error" yamllint.log || true)
           WARNINGS=$(grep -c "warning" yamllint.log || true)
+          echo ""
+          echo "Warning Breakdown:"
+          grep -o '\[[^]]*\]' yamllint.log | sort | uniq -c || true
+          echo ""
+          echo "Affected files:"
+          grep -E '^\.?/.*\.(yml|yaml)$' yamllint.log | sort -u || true
 
           echo "Errors: $ERRORS"
           echo "Warnings: $WARNINGS"

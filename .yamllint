@@ -1,0 +1,8 @@
+---
+extends: default
+
+rules:
+  truthy:
+    ignore: |
+      .forgejo/workflows/*.yml
+      .github/workflows/*.yml
