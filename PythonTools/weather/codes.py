@@ -317,8 +317,11 @@ def map_icon(code: int | None, is_day: bool) -> str:
     """Return the correct icon filename for a WMO weather code."""
     if code is None or code not in WEATHER_CODES:
         return "wi-na.svg"
-    key = "day_icon" if is_day else "night_icon"
-    return WEATHER_CODES[code][key]
+    if is_day:
+        return WEATHER_CODES[code]["day_icon"]
+
+    return WEATHER_CODES[code]["night_icon"]
+
 def collect_weather_icons() -> list[str]:
     """
     Return all day/night icons referenced by WEATHER_CODES.

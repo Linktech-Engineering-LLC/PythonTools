@@ -234,7 +234,7 @@ def merge_daily_periods(days: list, hourly: list):
     # ------------------------------------------------------------
     # Step 1: Group periods by date
     # ------------------------------------------------------------
-    grouped = {}
+    grouped: dict[str, Any] = {}
     for p in days:
         d = p["date"]
         grouped.setdefault(d, []).append(p)
@@ -491,7 +491,7 @@ def normalize_gridpoint_precip(grid: dict) -> dict:
     Returns dict keyed by date: { "YYYY-MM-DD": { ... } }
     """
 
-    daily = {}
+    daily: dict[str, Any] = {}
 
     def add_value(series, key):
         for entry in series:

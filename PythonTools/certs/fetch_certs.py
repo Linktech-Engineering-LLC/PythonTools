@@ -61,7 +61,7 @@ def fetch_certificate_and_socket(hostname: str, port: int = 443, timeout: int = 
         cipher = cipher_info[0] if cipher_info is not None else None
 
         ocsp_resp = None
-        chain = []  # stdlib doesn't expose full chain cleanly
+        chain: list[str] = []  # stdlib doesn't expose full chain cleanly
 
         return cert, chain, tls_version, cipher
     except Exception as e:
