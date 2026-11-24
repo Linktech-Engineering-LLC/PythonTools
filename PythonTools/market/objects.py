@@ -41,9 +41,9 @@ class TrendResult:
     reversal: Optional[bool] = None      # True/False
     windows: Optional[Dict[str, Any]] = None  # short/medium/long window trends
 
-    def to_json(self) -> dict:
+    def to_json(self) -> dict[str, Any]:
         """Return only fields that are not None."""
-        out = {}
+        out: dict[str, Any] = {}
         if self.trend is not None:
             out["trend"] = self.trend
         if self.slope is not None:
