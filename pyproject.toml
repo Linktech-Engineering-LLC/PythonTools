@@ -22,3 +22,7 @@ version = {file = "VERSION"}
 where = ["."]
 include = ["PythonTools*"]
 exclude = ["tests*", "data*", "archive*"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true

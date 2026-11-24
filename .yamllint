@@ -6,3 +6,10 @@ rules:
     ignore: |
       .forgejo/workflows/*.yml
       .github/workflows/*.yml
+
+  document-start:
+    ignore: |
+      .forgejo/workflows/*.yml
+      .github/workflows/*.yml
+      .github/FUNDING.yml
+      
