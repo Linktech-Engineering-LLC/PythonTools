@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
-Modified: 2026-09-08
+ Modified: 2026-11-24
  File: PythonTools/utils/common.py
  Version: 1.0.0
  Description: Description of this module
@@ -24,7 +24,7 @@ import tomllib
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-def json_output(data, force_color=False):
+def json_output(data: Any, force_color=False) -> str:
     is_tty = sys.stdout.isatty()
 
     # Pretty JSON for TTY, compact for pipes
@@ -88,7 +88,7 @@ def normalize_path(p: Optional[str]) -> Optional[str]:
 # ------------------------------------------------------------
 # String <-> dictionary helpers
 # ------------------------------------------------------------
-def string_to_dictionary(value: str) -> dict:
+def string_to_dictionary(value: str) -> dict[str, Any]:
     """
     Parse a config string like:
         'manager.name=firewalld,manager.timeout=1h,kernel.debug=true'
@@ -97,7 +97,7 @@ def string_to_dictionary(value: str) -> dict:
     if not value:
         return {}
 
-    result = {}
+    result: dict[str, Any] = {}
     parts = []
     buf = []
     depth = 0
@@ -139,7 +139,7 @@ def string_to_dictionary(value: str) -> dict:
 
         # Support dotted keys for nested dicts
         keys = key.strip().split(".")
-        d = result
+        d: dict[str, Any] = result
         for k in keys[:-1]:
             if k not in d or not isinstance(d[k], dict):
                 d[k] = {}
@@ -147,10 +147,10 @@ def string_to_dictionary(value: str) -> dict:
         d[keys[-1]] = val
 
     return result
-def dict_to_string(d: dict) -> str:
+def dict_to_string(d: dict[str, Any]) -> str:
     """Convert a dictionary into a simple key=value,key2=value2 string."""
     return ",".join(f"{k}={v}" for k, v in d.items())
-def matches_ignore(name, patterns) -> bool:
+def matches_ignore(name: str, patterns: list[str] | None) -> bool:
     if not patterns:
         return False
 
@@ -219,7 +219,7 @@ def classify_exit_code(
     raise RuntimeError(
         f"Host '{host_name}' step '{step}' failed with exit code {exit_code}"
     )
-def normalize_list(values):
+def normalize_list(values: list[str] | None) -> list[str]:
     """
     Normalize a list of strings (or comma-separated strings) into a
     clean, lowercase, deduplicated list while preserving order.
@@ -235,7 +235,7 @@ def normalize_list(values):
                 out.append(name)
 
     return list(dict.fromkeys(out))
-def round1(x):
+def round1(x: float | None) -> float | None:
     return round(x, 1) if x is not None else None
 def ceil1(x):
     return math.ceil(x * 10) / 10 if x is not None else None

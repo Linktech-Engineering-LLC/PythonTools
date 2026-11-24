@@ -5,15 +5,21 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-09
-Modified: 2026-09-23
+ Modified: 2026-11-24
  File: PythonTools/weather/codes.py
  Version: 1.0.0
  Description: Weather Code Mapping utilities
 """
 
-from typing import Any
+from typing import Any, TypedDict
+class WeatherCode(TypedDict):
+    canonical: str
+    contexts: list[str]
+    day_icon: str
+    night_icon: str
+    
+WEATHER_CODES: dict[int, WeatherCode] = {
 
-WEATHER_CODES = {
     0: {
         "canonical": "Clear sky",
         "contexts": [
@@ -313,7 +319,7 @@ def map_icon(code: int | None, is_day: bool) -> str:
         return "wi-na.svg"
     key = "day_icon" if is_day else "night_icon"
     return WEATHER_CODES[code][key]
-def collect_weather_icons():
+def collect_weather_icons() -> list[str]:
     """
     Return all day/night icons referenced by WEATHER_CODES.
     """

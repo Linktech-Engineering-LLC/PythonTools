@@ -5,14 +5,14 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-10
- Modified: 2026-08-20
+ Modified: 2026-11-24
  File: PythonTools/weather/providers/builders.py
  Version: 1.0.0
  Description: Module description here
 """
 
 import requests
-import urllib
+from urllib.parse import urlencode
 
 from ..registry import WEATHER_PROVIDERS
 
@@ -113,4 +113,4 @@ def build_open_meteo_url(lat: float, lon: float, mode: str) -> str:
         case _:
             raise ValueError(f"Unsupported mode for Open-Meteo: {mode}")
 
-    return f"{base}?{urllib.parse.urlencode(params)}"
+    return f"{base}?{urlencode(params)}"

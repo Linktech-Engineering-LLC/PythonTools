@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-08-29
+ Modified: 2026-11-24
  File: PythonTools/market/objects.py
  Version: 1.0.0
  Description:
@@ -59,7 +59,28 @@ class TrendResult:
         return out
 
 @dataclass
+@dataclass(init=False)
 class QuoteResult:
+
+    price: float | int | None
+    pct: float | int | None
+
+    provider: str | None
+    timestamp: str | None
+
+    raw: dict[str, Any]
+    history: list[float]
+
+    fallback_chain: list[str]
+
+    error: str | None
+
+    provider_key: str | None
+    provider_symbol: str | None
+
+    trend_result: TrendResult
+    trend_data: dict[str, Any]
+    
     def __init__(
         self,
         price,
@@ -114,7 +135,7 @@ class QuoteResult:
         self.provider_symbol = provider_symbol
 
         self.trend_result = trend_result or TrendResult()
-        self.trend_data = trend_data or {}
+        self.trend_data: dict[str, Any] = trend_data or {}
 
     def compute_trend(self):
         """Compute all trend metrics in one place."""

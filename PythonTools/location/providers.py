@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-08-03
- Modified: 2026-08-26
+ Modified: 2026-11-24
  File: PythonTools/location/providers.py
  Version: 1.0.0
  Description: Module description here
@@ -13,15 +13,23 @@ Created: 2026-08-03
 
 import json
 import urllib.request
+from typing import TypedDict
 
 from .geo_types import LocationInfo, GeoPoint
 from ..net.http import http_get_json
 
+class ProviderEndpoints(TypedDict):
+    zip: str
+    city: str
+    
+class LocationProvider(TypedDict):
+    base: str
+    endpoints: dict[str, str]    
 
 class ProviderError(Exception):
     pass
 
-LOCATION_PROVIDERS = {
+LOCATION_PROVIDERS: dict[str, LocationProvider] = {
     "zippopotam.us": {
         "base": "https://api.zippopotam.us",
         "endpoints": {

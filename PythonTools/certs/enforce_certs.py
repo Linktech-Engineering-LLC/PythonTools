@@ -5,12 +5,12 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
 Created: 2026-07-12
- Modified: 2026-07-14
+ Modified: 2026-11-24
  File: PythonTools/certs/enforce_certs.py
  Version: 1.0.0
  Description: Certificate Enforcement Modules
 """
-from typing import Dict, List, cast
+from typing import Dict, List, cast, Any
 
 
 from .models import EnforcementResults
@@ -45,7 +45,7 @@ def empty_enforcement_results() -> EnforcementResults:
 
         "errors": [],
     }
-def run_enforcement_checks(args, meta) -> EnforcementResults:
+def run_enforcement_checks(args: Any, meta: dict[str, Any]) -> EnforcementResults:
     """
     Evaluate all enforcement rules and return raw results.
     meta = extracted certificate metadata.
@@ -142,7 +142,7 @@ def run_enforcement_checks(args, meta) -> EnforcementResults:
     )
 
     return results
-def run_monitoring_checks(args, meta) -> EnforcementResults:
+def run_monitoring_checks(args: Any, meta: dict[str, Any]) -> EnforcementResults:
     results = empty_enforcement_results()
 
     if args.check_self_signed:
@@ -186,7 +186,7 @@ def merge_enforcement(
         }
     """
 
-    enf = {
+    enf: Dict[str, List[str]] = {
         "applied": [],
         "passed": [],
         "failed": [],
@@ -242,7 +242,7 @@ def merge_enforcement(
             enf["failed"].append(f"{rule}_warning")
 
     return enf
-def build_enforcement_dict(args, results) -> Dict:
+def build_enforcement_dict(args: Any, results: EnforcementResults) -> dict[str, list[str]]:
     """
     Build a deterministic enforcement dictionary for verbose, JSON, and Nagios modes.
 
