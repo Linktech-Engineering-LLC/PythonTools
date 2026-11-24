@@ -111,8 +111,8 @@ jobs:
             echo '```'
             grep -o '\[[^]]*\]' yamllint.log | sort |*uniq -c || true
             echo '*``*
-          } >> "$GITHUB_STEP_SUMM*RY*
-          
+          } >> "$GITHUB_STEP_SUMMARY
+
       - name: Shellcheck
         if: ${{ hashFiles('**/*.sh') != '' }}
         continue-on-error: true
