@@ -15,7 +15,8 @@ readme = {file = "README.md", content-type = "text/markdown"}
 dependencies = [
     "PyYAML>=6.0",
     "psutil",
-    "pysnmp"
+    "pysnmp",
+    "requests"
 ]
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}
