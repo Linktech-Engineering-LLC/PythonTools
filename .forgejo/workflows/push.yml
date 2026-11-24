@@ -53,10 +53,23 @@ jobs:
         run: |
           ruff check . --statistics || true
 
-      - name: Run yamllint (non-blocking)
+      - name: Run yamllint
+        continue-on-error: true
         run: |
-          echo "Running yamllint..."
-          yamllint . || true
+          YAML_FILES=$(find . \( -name "*.yml" -o -name "*.yaml" \))
+
+          if [ -z "$YAML_FILES" ]; then
+              echo "No YAML files found."
+              exit 0
+          fi
+
+          yamllint . 2>&1 | tee yamllint.log || true
+
+          ERRORS=$(grep -c "error" yamllint.log || true)
+          WARNINGS=$(grep -c "warning" yamllint.log || true)
+
+          echo "Errors: $ERRORS"
+          echo "Warnings: $WARNINGS"
 
       - name: Shellcheck
         continue-on-error: true
