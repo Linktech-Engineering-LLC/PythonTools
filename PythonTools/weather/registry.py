@@ -10,8 +10,18 @@ Created: 2026-08-09
  Version: 1.0.0
  Description: Module description here
 """
+from typing import Callable, TypedDict
 
-WEATHER_PROVIDERS = {
+class WeatherProvider(TypedDict, total=False):
+    base: str
+    supports: list[str]
+
+    fetch_current: Callable
+    fetch_hourly: Callable
+    fetch_weekly: Callable
+    fetch_full: Callable
+    
+WEATHER_PROVIDERS: dict[str, WeatherProvider] = {
     "open-meteo": {
         "base": "https://api.open-meteo.com/v1/forecast",
         "supports": ["current", "hourly", "weekly", "full"],
