@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-17
- Modified: 2026-08-24
+ Modified: 2026-11-25
  File: PythonTools/nagios/mode.py
  Version: 1.0.0
  Description: Flag engine and mode detection for Nagios-compatible tools.
@@ -36,22 +36,22 @@ class Flags:
     # -----------------------------
     # Core bit operations
     # -----------------------------
-    def set(self, flag: FlagNames, value: bool = True):
+    def set(self, flag: IntEnum, value: bool = True):
         if value:
             self._mask |= (1 << flag.value)
         else:
             self._mask &= ~(1 << flag.value)
 
-    def get(self, flag: FlagNames) -> bool:
+    def get(self, flag: IntEnum) -> bool:
         return bool(self._mask & (1 << flag.value))
 
     # -----------------------------
     # Convenience accessors
     # -----------------------------
-    def __getitem__(self, flag: FlagNames) -> bool:
+    def __getitem__(self, flag: IntEnum) -> bool:
         return self.get(flag)
 
-    def __setitem__(self, flag: FlagNames, value: bool):
+    def __setitem__(self, flag: IntEnum, value: bool):
         self.set(flag, value)
 
     # -----------------------------
