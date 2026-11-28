@@ -4,7 +4,6 @@
 ![Last Commit](https://img.shields.io/github/last-commit/Linktech-Engineering-LLC/PythonTools)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Status](https://img.shields.io/badge/status-active%20development-green)
-![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows%20%7C%20macOS-lightgrey)
 ![Version](https://img.shields.io/badge/version-0.2.0-blue)]
 
 **Part of:** Linktech Engineering Tools Suite  
