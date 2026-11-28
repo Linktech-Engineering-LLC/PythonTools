@@ -187,7 +187,9 @@ PythonTools follows a conservative stability model.
 
 Key guarantees include:
 
-* Existing APIs remain hanges require a version increment.
+* Existing APIs remain stable.
+* New modules may be added.
+* Breaking changes require a version increment.
 * Deterministic behavior is preserved.
 * Existing consumers should not be affected by unrelated enhancements.
 
@@ -257,16 +259,3 @@ PythonTools allows consuming applications to focus on business logic rather than
 This document provides an overview of the PythonTools project.
 
 PythonTools serves as the shared execution and utility layer for multiple Linktech Engineering projects.
-
-Planned detailed documentation includes:
-
-* [Caching.md](docs/Caching.md)
-* [Design.md](docs/Design.md)
-* [Logging.md](docs/Logging.md)
-* [Sessions.md](docs/Sessions.md)
-* [Networking.md](docs/Networking.md)
-* [Weather.md](docs/Weather.md)
-* API_Reference.md
-* Troubleshooting.md
-
-Detailed subsystem documentation should reside within the `docs/` directory rather than in the project README.
