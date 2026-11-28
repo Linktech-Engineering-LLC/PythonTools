@@ -1,0 +1,49 @@
+name: Feature request
+
+description: Suggest an enhancement or new capability for PythonTools
+
+labels: [enhancement]
+
+body:
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: A clear description of the feature or enhancement.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Affected Module
+      description: Which PythonTools module would benefit from this enhancement?
+      placeholder: |
+        sessions
+        net
+        weather
+        nagios
+        market
+        cache
+        log_helpers
+        core
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Motivation
+      description: Why is this feature useful or necessary?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Proposed Solution
+      description: Describe how the feature could work.
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Additional Context
+      description: Any other information, examples, references, or related projects.

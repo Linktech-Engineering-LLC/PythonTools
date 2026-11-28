@@ -1,0 +1,61 @@
+name: Bug report
+
+description: Report a reproducible issue in PythonTools
+
+labels: [bug]
+
+body:
+
+  - type: textarea
+    attributes:
+      label: Description
+      description: A clear and concise description of the issue.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Affected Module
+      description: Which PythonTools module is affected?
+      placeholder: |
+        sessions
+        net
+        weather
+        nagios
+        cache
+        log_helpers
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce
+      description: Provide exact steps to reproduce the issue.
+      placeholder: |
+        1. Run...
+        2. Import...
+        3. Call...
+        4. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Actual Behavior
+      description: What actually happened, including logs, stack traces, or error messages.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Environment
+      description: Operating system, Python version, PythonTools version, and any relevant details.
+    validations:
+      required: true
