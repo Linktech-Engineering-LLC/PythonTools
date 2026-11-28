@@ -173,7 +173,6 @@ PythonTools serves as a shared dependency for:
 * RunUpdates
 * NMS_Tools
 * TimerDeck
-* VSCode-Updater
 * BotScanner
 * Additional Linktech Engineering projects
 
