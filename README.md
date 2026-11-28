@@ -1,376 +1,273 @@
 # PythonTools
 
+[![License](https://img.shields.io/github/license/Linktech-Engineering-LLC/PythonTools)
+![Last Commit](https://img.shields.io/github/last-commit/Linktech-Engineering-LLC/PythonTools)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Status](https://img.shields.io/badge/status-active%20development-green)
+![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows%20%7C%20macOS-lightgrey)
+![Version](https://img.shields.io/badge/version-0.2.0-blue)]
+
 **Part of:** Linktech Engineering Tools Suite  
 **Library:** PythonTools  
 **Author:** Leon McClatchey, Linktech Engineering LLC  
 **License:** MIT  
 **Requires:** Python 3.10+  
-**Last Updated:** 2026‑08‑20
-
-![Status: Under Construction](https://img.shields.io/badge/status-under_construction-yellow.svg)
-![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
-![Linktech Engineering Tools Suite](https://img.shields.io/badge/Linktech_Engineering-Tools_Suite-blueviolet.svg)
-![Last Commit](https://img.shields.io/github/last-commit/Linktech-Engineering-LLC/PythonTools)
-
-PythonTools is a deterministic, cross‑project utility library providing stable primitives for execution, logging, path resolution, schema loading, and exception modeling. It is the foundational support library used across the **Linktech Engineering Tools Suite**, including RunUpdates, VSCode‑Updater, NMS_Tools, TimerDeck, BotScanner and other operator‑grade automation projects.
-
-PythonTools is designed so that adding new functionality **cannot negatively affect other projects** importing it. Modules are isolated, deterministic, and safe for reuse across multiple applications.
+**Last Updated:** 2026-11-27
 
 ---
 
 ## Table of Contents
+
 1. [Overview](#1-overview)
-2. [Design Guarantees](#2-design-guarantees)
-3. [Modules](#3-modules)
-4. [Weather Provider Architecture](#4-weather-provider-architecture)
-5. [Project Ecosystem](#-5-project-ecosystem)
-6. [Module Relationships Diagram](#6-module-relationships-diagram)
-7. [Used By](#7-used-by)
-8. [Related Project: RunUpdates](#8-related-project-runupdates)
-9. [Related Project: NMS_Tools](#9-related-project-nms_tools)
-10. [Project Status](#10-project-status)
-11. [Roadmap](#11-roadmap)
-12. [Stability Model](#12-stability-model)
-13. [Philosophy](#13-philosophy)
-14. [License](#14-license)
+2. [Purpose](#2-purpose)
+3. [Design Principles](#3-design-principles)
+4. [Architecture](#4-architecture)
+5. [Core Capabilities](#5-core-capabilities)
+6. [Modules](#6-modules)
+7. [Project Ecosystem](#7-project-ecosystem)
+8. [Stability Model](#8-stability-model)
+9. [Roadmap](#9-roadmap)
+10. [Documentation](#10-documentation)
+11. [Summary](#11-summary)
+12. [Notes](#12-notes)
 
 ---
 
 ## 1. Overview
 
-PythonTools provides stable, reusable modules intended for use across multiple operator‑grade projects. These modules implement deterministic patterns for:
+PythonTools is a deterministic, reusable utility library that provides common functionality used throughout the Linktech Engineering Tools Suite.
 
-* subprocess execution
-* path and environment resolution
-* structured JSON logging
-* exception modeling
-* schema loading and validation
-* normalization and inheritance helpers
-* frozen‑bundle compatibility
+It serves as the shared execution, networking, logging, parsing, normalization, validation, and utility layer used by multiple applications.
 
-PythonTools is not a “common utilities dumping ground.”
-It is a *stable foundation layer** for the entire Linktech Engineering ecosystem.
+PythonTools is designed to provide stable capabilities while remaining independent of application-specific business logic.
 
 ---
 
-## 2. Design Guarantees
+## 2. Purpose
 
-PythonTools follows strict design rules:
+PythonTools exists to eliminate duplicated infrastructure code across projects.
 
-* **Deterministic behavior** — no nondeterministic helpers or hidden state
-* **No global state mutation** — modules never modify shared global variables
-* **No cross‑project contamination** — importing PythonTools cannot break other projects
-* **Stable import surface** — modules expand, but existing behavior remains stable
-* **Predictable subprocess wrappers** — normalized exit codes, stdout/stderr, and error modeling
-* **Consistent exception types** — unified error model across all projects
-* **Safe logging with redaction** — secrets never logged
-* **Frozen‑bundle compatibility** — works inside PyInstaller, zipapp, and frozen distributions
+Its goals are to:
 
-These guarantees allow PythonTools to serve as a reliable backbone for multiple automation systems.
+* Provide reusable execution primitives.
+* Standardize logging and error handling.
+* Normalize networking and session management.
+* Provide shared parsing and utility functions.
+* Support deterministic behavior across applications.
+* Enable cross-project consistency.
 
----
+PythonTools provides capabilities.
 
-## 3. Modules
-
-PythonTools is organized into domain‑specific modules. Each module is isolated, deterministic, and safe for cross‑project import.
-
-| Module      | Purpose |
-|------------|---------|
-| **ansible** | Automation helpers for remote orchestration and playbook execution. |
-| **cache**   | Deterministic caching helpers for provider and subsystem data. |
-| **certs**   | Certificate and trust store helpers for secure connections. |
-| **color**   | Color and style helpers for terminal or structured output. |
-| **core**    | Foundational primitives — constants, base classes, shared logic. |
-| **datetime**| Date/time helpers, normalization, and deterministic time handling. |
-| **finance** | Financial/transactional normalization and reporting. |
-| **http**    | HTTP client helpers and request/response normalization. |
-| **location**| Location and coordinate helpers (lat/lon, geospatial context). |
-| **log_helpers** | Structured logging, redaction, formatting utilities. |
-| **market**  | Market analytics, pricing, and trading integrations. |
-| **nagios**  | Monitoring and alerting integration for Nagios systems. |
-| **net**     | Networking helpers — sockets, SSH, HTTP, connection utilities. |
-| **parser**  | Text/stdout parsing utilities used by RunUpdates and others. |
-| **parsing** | Shared parsing primitives and normalization helpers. |
-| **sessions**| SSH/API/local subprocess session management. |
-| **system**  | System‑level helpers (environment, platform, process context). |
-| **units**   | Unit conversion and normalization helpers. |
-| **utils**   | Transitional helpers; gradually migrated into domain modules. |
-| **weather** | Weather provider architecture and normalized ingestion engine. |
-
-Each module follows the same design guarantees:
-
-* deterministic behavior
-* no global state mutation
-* safe cross‑project import
-* consistent exception and logging models
+Applications provide behavior.
 
 ---
 
-## 4. Weather Provider Architecture
+## 3. Design Principles
 
-PythonTools includes a deterministic, provider‑agnostic weather ingestion subsystem used by NMS_Tools and other Linktech Engineering projects. The subsystem provides unified access to multiple upstream weather providers through a stable, normalized schema.
+PythonTools follows several core principles:
 
-### Provider Registry
+* Deterministic behavior.
+* No hidden state.
+* No cross-project contamination.
+* Stable import surfaces.
+* Reusable modular design.
+* Cross-platform operation.
+* Logging with redaction.
+* Frozen-bundle compatibility.
 
-Weather providers register themselves through the `WEATHER_PROVIDERS` dictionary.  
+PythonTools is intentionally application-agnostic.
 
-```python
-WEATHER_PROVIDERS["nws"].update({
-"supports": ("current", "hourly", "weekly", "full"),
-"fetch_current": fetch_current_nws,
-"fetch_hourly": fetch_hourly_nws,
-"fetch_weekly": fetch_weekly_nws,
-"fetch_full": fetch_full_nws,
-})
+Modules should remain reusable across multiple projects without introducing project-specific assumptions.
+
+---
+
+## 4. Architecture
+
+The relationship between PythonTools and consuming applications is intentionally simple.
+
+```text
+PythonTools
+    provides capabilities
+
+Applications
+    provide behavior
+
+PythonTools
+    executes
+
+Applications
+    orchestrate
+
+Logging
+    records facts
+
+Classification
+    interprets facts
+
+Summaries
+    report results
 ```
 
-Each provider implements:
+PythonTools does not implement application business logic.
 
-```python
-fetch_current(lat, lon, timeout, meta)
-fetch_hourly(lat, lon, timeout, meta)
-fetch_weekly(lat, lon, timeout, meta)
-fetch_full(lat, lon, timeout, meta)
-```
-
-### Unified Modes
-
-PythonTools normalizes all provider output into a deterministic schema:
-
-```python
-{
-"current": {...},
-"hourly": {...},
-"weekly": {...},
-"alerts": {...}
-}
-```
-
-Mode definitions:
-
-* **current** — single observation block  
-* **hourly** — 24–48 hour forecast  
-* **weekly** — 7–10 day forecast  
-* **full** — composite mode: current + hourly + weekly  
-
-Alerts are appended by the caller (e.g., NMS_Tools `check_weather`).
-
-### Meta Model
-
-The `meta` object carries deterministic provider metadata:
-
-* `cached_obs` — NWS observation used for feels‑like, dewpoint, pressure  
-* `cached_station_id` — NWS station identifier  
-* provider URLs (when available)  
-* provider‑specific metadata
-
-NWS observations are fetched automatically for:
-
-* NWS: hourly, weekly, full  
-* Open‑Meteo: weekly, full  
-
-This ensures consistent feels‑like and dewpoint values across providers.
-
-### Unified Index Model
-
-All providers normalize environmental indices:
-
-```python
-index: {
-heat_index,
-wind_chill,
-humidex,
-wet_bulb,
-vapor_pressure,
-saturation_vapor_pressure,
-mixing_ratio,
-specific_humidity,
-air_density,
-pressure_altitude
-}
-```
-
-PythonTools guarantees deterministic calculations and fallback logic.
-
-### Condition Code Normalization
-
-Providers return different condition codes.  
-PythonTools normalizes them into a unified set:
-
-* `condition` — numeric code  
-* `context` — human‑readable description  
-* `icon` — deterministic icon name
-
-### Deterministic Output Schema
-
-PythonTools guarantees:
-
-* identical schema across providers  
-* identical schema across modes  
-* identical schema across locations  
-* identical schema across frozen and non‑frozen builds
+Consuming applications remain responsible for operational behavior, workflows, and policy decisions.
 
 ---
 
-## 🧩 5. Project Ecosystem
+## 5. Core Capabilities
 
-PythonTools is the shared foundation for the Linktech Engineering Tools Suite:
+PythonTools currently provides:
 
-* **RunUpdates** — update orchestration and system maintenance
-* **NMS_Tools** — network management, market data, weather ingestion, and system checks
-* **TimerDeck** — systemd automation and scheduling
-* **VSCode-Updater** — editor update automation
-* **BotScanner** — security analysis and behavioral scanning
+* Command execution
+* SSH session management
+* Networking utilities
+* Structured logging helpers
+* Parsing and normalization
+* Schema loading and validation
+* Platform and environment helpers
+* Certificate utilities
+* Weather data ingestion
+* Monitoring integrations
+* Caching services
+* Date and time helpers
+* Location and geospatial utilities
 
-This ecosystem relies on PythonTools for deterministic execution, logging, schema validation, and cross‑project stability.
-
----
-
-## 6. Module Relationships Diagram
-
-\`\`\`
-   ┌──────────────────────────┐
-   │        DATA CORE         │
-   │ core, units, system,     │
-   │ datetime, location, cache│
-   └───────────┬──────────────┘
-               │
-               ▼
-   ┌──────────────────────────┐
-   │      PARSING CORE        │
-   │ parser, parsing,         │
-   │ log_helpers              │
-   └───────────┬──────────────┘
-               │
-               ▼
-   ┌──────────────────────────┐
-   │      NETWORK CORE        │
-   │ net, http, sessions      │
-   └───────────┬──────────────┘
-               │
-               ▼
-   ┌──────────────────────────┐
-   │      DOMAIN LAYERS       │
-   └──────────────────────────┘
-
-   market ↔ finance
-
-   weather → nagios
-   parsing → nagios
-   location → nagios
-   net → nagios
-   http → nagios
-
-   ansible → RunUpdates
-   RunUpdates → parsing, net, sessions, system, core
-
-   parser → market, finance, nagios, RunUpdates
-\`\`\`
-
+These capabilities are shared across multiple projects.
 
 ---
 
-## 7. Used By
+## 6. Modules
 
-PythonTools is used across:
+PythonTools is organized into domain-focused modules.
+
+| Module | Purpose |
+|----------|----------|
+| ansible | Remote orchestration helpers |
+| cache | Deterministic caching |
+| certs | Certificate utilities |
+| color | Terminal formatting |
+| core | Shared primitives |
+| datetime | Date and time utilities |
+| finance | Financial normalization |
+| http | HTTP client helpers |
+| location | Geospatial helpers |
+| log_helpers | Logging support |
+| market | Market data utilities |
+| nagios | Monitoring integrations |
+| net | Networking helpers |
+| parser | Text parsing utilities |
+| parsing | Shared parsing primitives |
+| sessions | Session management |
+| system | Platform utilities |
+| units | Unit conversions |
+| utils | Transitional utilities |
+| weather | Weather ingestion framework |
+
+Modules are designed to remain isolated, reusable, and deterministic.
+
+---
+
+## 7. Project Ecosystem
+
+PythonTools serves as a shared dependency for:
+
 * RunUpdates
 * NMS_Tools
 * TimerDeck
+* VSCode-Updater
 * BotScanner
-* Additional internal tools
+* Additional Linktech Engineering projects
 
----
-## 8. Related Project: RunUpdates
-
-![RunUpdates Status](https://img.shields.io/badge/RunUpdates-Active-green.svg)
-![RunUpdates License](https://img.shields.io/badge/license-MIT-blue.svg)
-![RunUpdates Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
-![Linktech Engineering Tools Suite](https://img.shields.io/badge/Linktech_Engineering-Tools_Suite-blueviolet.svg)
-[![RunUpdates Dashboard](https://img.shields.io/badge/RunUpdates-Dashboard-blue)](https://linktech-engineering-llc.github.io/RunUpdates/)
-[![RunUpdates Stable](https://img.shields.io/badge/RunUpdates-Stable-green)](https://linktech-engineering-llc.github.io/RunUpdates/stable/)
-![RunUpdates Last Commit](https://img.shields.io/github/last-commit/Linktech-Engineering-LLC/RunUpdates)
-
-PythonTools provides foundational components used by  
-[**RunUpdates**](https://github.com/Linktech-Engineering-LLC/RunUpdates)
-
-RunUpdates relies on PythonTools for:
-* deterministic subprocess execution
-* session and connection management
-* stdout parsing and normalization
-* system/environment resolution
-* logging and redaction
-* frozen‑bundle compatibility
+This shared foundation allows projects to reuse stable implementations without duplicating common infrastructure.
 
 ---
 
-## 9. Related Project: NMS_Tools
+## 8. Stability Model
 
-![NMS_Tools](https://img.shields.io/badge/NMS_Tools-Uses_PythonTools-blueviolet.svg)
-![NMS_Tools Status](https://img.shields.io/badge/NMS_Tools-Active-green.svg)
-![NMS_Tools License](https://img.shields.io/badge/license-MIT-blue.svg)
-![NMS_Tools Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
-![Linktech Engineering Tools Suite](https://img.shields.io/badge/Linktech_Engineering-Tools_Suite-blueviolet.svg)
-[![NMS_Tools Dashboard](https://img.shields.io/badge/NMS_Tools-Dashboard-green)](https://linktech-engineering-llc.github.io/NMS_Tools/)
-[![NMS_Tools Stable](https://img.shields.io/badge/NMS_Tools-Stable-green)](https://linktech-engineering-llc.github.io/NMS_Tools/stable/)
-![NMS_Tools Last Commit](https://img.shields.io/github/last-commit/Linktech-Engineering-LLC/NMS_Tools)
+PythonTools follows a conservative stability model.
 
-PythonTools provides foundational components used by  
-[**NMS_Tools**](https://github.com/Linktech-Engineering-LLC/NMS_Tools)
+Key guarantees include:
 
-NMS_Tools relies on PythonTools for:
-* deterministic subprocess execution
-* unified logging and redaction
-* schema loading and validation
-* market/finance provider architecture
-* ticker normalization and trend analysis
-* weather and network data ingestion
-* stdout parsing and normalization
-* frozen‑bundle compatibility for distribution
+* Existing APIs remain hanges require a version increment.
+* Deterministic behavior is preserved.
+* Existing consumers should not be affected by unrelated enhancements.
+
+PythonTools is intended to be a dependable foundation layer for long-lived projects.
 
 ---
 
-## 10. Project Status
+## 9. Roadmap
 
-PythonTools is in active development.
-Modules are being stabilized as they are exported from existing projects.
+Current priorities include:
 
----
+* Expanded module documentation.
+* Automated testing.
+* Semantic versioning.
+* API reference generation.
+* Additional provider integrations.
+* Improved module coverage.
+* PyPI packaging evaluation.
 
-## 11. Roadmap
-
-* Document subprocess wrappers
-* Document path/env resolution
-* Document logging model
-* Document exception model
-* Add semantic versioning
-* Add automated tests
-* Prepare for PyPI packaging
-* Add module reference pages
+Roadmap priorities may evolve as ecosystem requirements change.
 
 ---
 
-## 12. Stability Model
+## 10. Documentation
 
-PythonTools follows a stability model:
+Additional documentation is maintained within the `docs/` directory.
 
-* Existing APIs remain stable
-* New modules may be added
-* Breaking changes require a version bump
-* Behavior is deterministic across all supported environments
+Planned documentation topics include:
+
+* [Design](docs/Design.md)
+* [Logging](docs/Logging.md)
+* [Sessions](docs/Sessions.md)
+* [Networking](docs/Networking.md)
+* [Caching](docs/Caching.md)
+* [Weather](docs/Weather.md)
+* Nagios
+* Market
+* GUI
+* Exception Modeling
+* API Reference
+* Integrations
+* Troubleshooting
+
+This README serves as the primary project overview.
 
 ---
 
-## 13. Philosophy
+## 11. Summary
 
-PythonTools exists to keep application‑level projects clean, deterministic, and focused.
-It provides stable primitives so projects never need to reinvent execution, logging, or path resolution.
+PythonTools provides deterministic, reusable infrastructure components for the Linktech Engineering Tools Suite.
+
+Key characteristics include:
+
+* Reusable architecture.
+* Stable behavior.
+* Cross-project compatibility.
+* Application independence.
+* Deterministic execution.
+* Long-term maintainability.
+
+PythonTools allows consuming applications to focus on business logic rather than shared infrastructure concerns.
 
 ---
 
-## 14. License
+## 12. Notes
 
-MIT License
+This document provides an overview of the PythonTools project.
 
----
+PythonTools serves as the shared execution and utility layer for multiple Linktech Engineering projects.
 
+Planned detailed documentation includes:
+
+* [Caching.md](docs/Caching.md)
+* [Design.md](docs/Design.md)
+* [Logging.md](docs/Logging.md)
+* [Sessions.md](docs/Sessions.md)
+* [Networking.md](docs/Networking.md)
+* [Weather.md](docs/Weather.md)
+* API_Reference.md
+* Troubleshooting.md
+
+Detailed subsystem documentation should reside within the `docs/` directory rather than in the project README.
